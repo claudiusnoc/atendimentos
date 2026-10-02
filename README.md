@@ -28,4 +28,4 @@ O catálogo ainda precisa ser importado: carregue somente as linhas da aba `Tipo
 
 `supabase-config.js` contém somente a URL e a chave publicável do projeto. A chave publicável pode estar no navegador; as políticas RLS limitam as tabelas ao papel autenticado. Nunca adicione uma chave `secret` ou `service_role` ao código ou ao repositório.
 
-O modo local com `server.py` continua disponível para consultar as planilhas fonte. O diretório ainda não está inicializado como repositório Git e nenhum repositório foi publicado.
+O modo local com `server.py` continua disponível para consultar as planilhas fonte. O código está publicado em [claudiusnoc/atendimentos](https://github.com/claudiusnoc/atendimentos). A publicação web pelo GitHub Pages depende de habilitar o Pages nas configurações do repositório e concluir a primeira execução do fluxo de deploy.
