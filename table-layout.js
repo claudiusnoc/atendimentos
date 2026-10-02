@@ -38,7 +38,7 @@
   function renderWidths() {
     // Spare desktop space belongs to observations, never to short code fields.
     const rendered = [...widths];
-    if (!Number.isFinite(saved.notes)) rendered[7] += Math.max(0, wrapper.clientWidth - 28 - widths.reduce((sum, width) => sum + width, 0));
+    rendered[7] += Math.max(0, wrapper.clientWidth - 28 - widths.reduce((sum, width) => sum + width, 0));
     rendered.forEach((width, index) => {
       colElements[index].style.width = `${width}px`;
       handles[index]?.setAttribute("aria-valuenow", String(width));
