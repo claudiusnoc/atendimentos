@@ -1,0 +1,14 @@
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+#source-note.sync-state { display: block; position: static; width: auto; height: auto; clip: auto; clip-path: none; overflow: visible; flex: 1; font-size: 12px; margin: 0; color: #526478; }
+#source-note[data-sync="error"] { color: #9b312c; }
+#source-note[data-sync="saved"] { color: #35634d; }
+#source-note[data-sync="pending"] { color: #876521; }
+.sync-action { border: 1px solid #d5dde5; border-radius: 6px; padding: 6px 10px; background: white; color: #35465a; font: inherit; font-size: 12px; cursor: pointer; }
+.sync-action[hidden] { display: none; }
+#conflict-dialog { max-width: min(620px, calc(100vw - 32px)); border: 1px solid #d5dde5; border-radius: 12px; padding: 24px; color: #25364b; }
+#conflict-dialog::backdrop { background: #17243366; }
+#conflict-dialog li { margin: 12px 0; overflow-wrap: anywhere; }
+.conflict-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.conflict-actions button { padding: 10px; border: 1px solid #c7d3df; border-radius: 6px; background: #f4f7fa; color: #25364b; cursor: pointer; }
+.conflict-actions button:disabled { opacity: .5; cursor: not-allowed; }
+@media print { .toolbar, #conflict-dialog { display: none !important; } }

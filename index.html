@@ -6,7 +6,8 @@
     <meta name="description" content="Relatório operacional de atendimentos massivos." />
     <title>Atendimentos | Relatório operacional</title>
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="refinements.css" />
+    <link rel="stylesheet" href="refinements.css?v=sync-20261002-1" />
+    <link rel="stylesheet" href="sync.css?v=sync-20261002-1" />
   </head>
   <body>
     <section class="auth-screen" id="auth-screen" hidden aria-labelledby="auth-title">
@@ -44,7 +45,9 @@
       </header>
       <section class="toolbar" aria-label="Estado do relatório">
         <span id="sort-summary" class="sort-summary" role="status"></span>
-        <p id="source-note" class="sr-only" role="status" aria-live="polite">Carregando referências…</p>
+        <p id="source-note" class="sync-state" role="status" aria-live="polite" data-sync="neutral">Carregando referências…</p>
+        <button id="retry-sync" type="button" class="sync-action">Sincronizar</button>
+        <button id="resolve-conflict" type="button" class="sync-action" hidden>Resolver conflito</button>
       </section>
       <section class="report" id="relatorio" aria-labelledby="report-title">
         <h1 id="report-title" class="sr-only">Relatório de atendimentos</h1>
@@ -58,6 +61,14 @@
     <script src="supabase-config.js"></script>
     <script src="table-layout.js" defer></script>
     <script src="cell-options.js" defer></script>
-    <script src="app.js" defer></script>
+    <dialog id="conflict-dialog" aria-labelledby="conflict-title">
+      <h2 id="conflict-title">Alterações em dois dispositivos</h2>
+      <p>Compare os valores antes de continuar. Nada será sobrescrito sem sua escolha.</p>
+      <ul id="conflict-values"></ul>
+      <p>Se a linha foi removida ou alterada antes da exclusão, carregue a versão da nuvem e revise a ação.</p>
+      <div class="conflict-actions"><button type="button" id="use-cloud">Usar versão da nuvem</button><button type="button" id="keep-local">Manter minha edição</button><button type="button" id="close-conflict">Decidir depois</button></div>
+    </dialog>
+    <script src="cloud-sync.js?v=sync-20261002-1" defer></script>
+    <script src="app.js?v=sync-20261002-1" defer></script>
   </body>
 </html>

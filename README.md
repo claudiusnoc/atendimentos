@@ -2,6 +2,16 @@
 
 Projeto novo, localizado dentro da pasta que preserva as planilhas fonte.
 
+## Sincronização entre dispositivos — 02/10/2026
+
+No modo Supabase, a fonte do relatório é a tabela `atendimentos`, não a cópia antiga do navegador. O sistema consulta alterações a cada 5 segundos enquanto a página está visível e ao voltar para a aba. O botão **Sincronizar** permite nova tentativa manual.
+
+Somente campos efetivamente editados são enviados. `cloud-sync.js` compara a versão lida com `updated_at` antes de atualizar ou excluir. Alterações em campos diferentes são combinadas; edições concorrentes no mesmo campo exibem **Resolver conflito**, sem sobrescrever automaticamente. Isso depende do gatilho `touch_atendimento` de `supabase/schema.sql`.
+
+O indicador distingue pendente, salvo na nuvem e erro. Rascunhos não enviados ficam separados por usuário e aba, sobrevivem à recarga da mesma aba e são reenviados com verificação de conflito. O cache da versão antiga é preservado, mas nunca reenviado em bloco. Ao migrar, exporte qualquer edição ainda não salva na versão antiga antes de recarregar. Recarregue todas as abas antigas para que deixem de executar o salvamento anterior.
+
+Verificação executada: 16 testes automatizados de concorrência/agendamento; teste autenticado real de inclusão, leitura independente, atualização, conflito e exclusão de uma linha temporária. As sete linhas originais e seus timestamps permaneceram intactos. Nenhuma chave administrativa foi adicionada.
+
 ## Executar localmente
 
 Use um ambiente Python com `openpyxl` e execute:

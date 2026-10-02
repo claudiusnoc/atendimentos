@@ -22,8 +22,57 @@ let cloudUser = null;
 let cloudSaveTimer = 0;
 let cloudSaveRunning = false;
 let cloudSaveAgain = false;
+let cloudRefreshRunning = false;
 let cloudLoaded = false;
+let lastGridEditAt = 0;
 let authMode = "signin";
+let cloudPollTimer = 0;
+let cloudBaseline = new Map();
+let observedRows = new Map();
+let pendingChanges = new Map();
+let syncConflict = null;
+let sessionGeneration = 0;
+let editProblem = false;
+const syncTabId = (() => {
+  try {
+    const id = sessionStorage.getItem('atendimentos.tab') || crypto.randomUUID();
+    sessionStorage.setItem('atendimentos.tab', id); return id;
+  } catch { return crypto.randomUUID(); }
+})();
+const draftKey = () => `${reportCacheKey}.${cloudUser?.id}.${syncTabId}.pending.v2`;
+const cacheKey = () => `${reportCacheKey}.${cloudUser?.id}.confirmed.v2`;
+function persistDraft() {
+  if (!cloudUser) return;
+  try { localStorage.setItem(draftKey(), JSON.stringify([...pendingChanges])); }
+  catch { setSyncStatus('Cache indisponível. Mantenha a página aberta até confirmar o salvamento.', 'error'); }
+}
+const displayCloudRow = row => ({ ...row, voltage: row.voltage == null ? '' : String(row.voltage).replace('.', ',') });
+function rememberScreen() {
+  observedRows = new Map([...body.rows].map((row, index) => {
+    const record = read(row);
+    return [record.id, ReportSync.payload(record, Number(row.dataset.order) || index + 1)];
+  }));
+}
+function acceptCloudRows(rows) {
+  cloudBaseline = new Map(rows.map(row => [row.id, { ...row }]));
+  const displayed = new Map(rows.map(row => [row.id, { ...row }]));
+  for (const [id, operation] of pendingChanges) {
+    if (operation.deleted) displayed.delete(id);
+    else displayed.set(id, { ...(displayed.get(id) || operation.base || {}), ...operation.patch, id });
+  }
+  const visible = [...displayed.values()].sort((a, b) => a.ordem - b.ordem);
+  hideSitePopover(); cellOptions.close(); body.replaceChildren();
+  addRows(visible.length ? visible.map(displayCloudRow) : [{}]);
+  records = [...body.rows].map(read); rememberScreen(); applySearch();
+  try { localStorage.setItem(cacheKey(), JSON.stringify(rows)); } catch { /* Network remains authoritative. */ }
+}
+
+function setSyncStatus(message, state = "neutral") {
+  note.textContent = message;
+  note.dataset.sync = state;
+  const resolve = document.querySelector('#resolve-conflict');
+  if (resolve) resolve.hidden = !syncConflict;
+}
 
 const fields = (row) => ({
   site: row.querySelector(".site-input"), priority: row.querySelector(".priority-input"), quantity: row.querySelector(".quantity-input"),
@@ -62,15 +111,10 @@ const paintVoltage = (input) => {
 };
 async function getCloudRows() {
   const { data, error } = await cloudClient.from("atendimentos")
-    .select("id,ordem,site,priority,quantity,technician,base,failure,status,notes,voltage")
+    .select(ReportSync.select)
     .order("ordem").order("created_at");
   if (error) throw error;
-  return (data || []).map((row) => ({
-    id: row.id, site: row.site, priority: row.priority || "", quantity: row.quantity || "",
-    technician: row.technician || "", base: row.base || "", failure: row.failure || "",
-    status: row.status || "", notes: row.notes || "",
-    voltage: row.voltage == null ? "" : String(row.voltage).replace(".", ","),
-  }));
+  return data || [];
 }
 const request = async (url) => {
   if (!cloudClient) {
@@ -98,15 +142,41 @@ const request = async (url) => {
   throw new Error("Consulta não reconhecida.");
 };
 const save = () => {
-  try { localStorage.setItem(reportCacheKey, JSON.stringify(records)); } catch { /* Cloud saves remain available if browser storage is disabled. */ }
+  if (!cloudClient) try { localStorage.setItem(reportCacheKey, JSON.stringify(records)); } catch { /* Local mode only. */ }
   if (cloudClient && cloudUser) {
     window.clearTimeout(cloudSaveTimer);
-    cloudSaveTimer = window.setTimeout(saveCloudRows, 450);
+    cloudSaveTimer = 0;
+    if (pendingChanges.size && !syncConflict) {
+      setSyncStatus('Alterações pendentes de envio…', 'pending');
+      cloudSaveTimer = window.setTimeout(() => { cloudSaveTimer = 0; saveCloudRows(); }, 450);
+    }
   }
 };
 const read = (row) => ({ ...Object.fromEntries(Object.entries(fields(row)).map(([key, element]) => [key, element.value.trim()])), id: row.dataset.recordId || "" });
 const updateCount = () => {};
-const sync = () => { records = [...body.rows].map(read); save(); updateCount(); };
+const sync = () => {
+  lastGridEditAt = Date.now(); records = [...body.rows].map(read); editProblem = false;
+  if (cloudClient && cloudUser) {
+    for (const [index, row] of [...body.rows].entries()) {
+      const record = read(row);
+      try {
+        const value = ReportSync.payload(record, Number(row.dataset.order) || index + 1);
+        const previous = observedRows.get(record.id) || {};
+        const changed = Object.fromEntries(Object.entries(value).filter(([key, val]) => !ReportSync.equal(previous[key], val)));
+        if (Object.keys(changed).length && (record.site || cloudBaseline.has(record.id))) {
+          const existing = pendingChanges.get(record.id);
+          const base = existing ? existing.base : cloudBaseline.get(record.id) || null;
+          pendingChanges.set(record.id, { id: record.id, base, patch: base ? { ...(existing?.patch || {}), ...changed } : value, valid: row.dataset.validSite === 'true' });
+        }
+        const operation = pendingChanges.get(record.id);
+        if (operation) operation.valid = row.dataset.validSite === 'true';
+        observedRows.set(record.id, value);
+      } catch (error) { editProblem = true; setSyncStatus(error.message, 'error'); }
+    }
+    persistDraft();
+  }
+  save(); updateCount();
+};
 const priorityRank = (value) => {
   const match = priorityToken(value).match(/(?:nivel-*)?(\d+)/i);
   if (match) return Number(match[1]);
@@ -155,6 +225,7 @@ function sortRows(key) {
   hideSitePopover();
   cellOptions.close();
   body.replaceChildren(...sorted);
+  [...body.rows].forEach((row, index) => { row.dataset.order = index + 1; });
   sync();
   applySearch();
   updateSortIndicators();
@@ -162,37 +233,46 @@ function sortRows(key) {
 
 async function saveCloudRows() {
   if (!cloudClient || !cloudUser) return;
+  window.clearTimeout(cloudSaveTimer); cloudSaveTimer = 0;
   if (cloudSaveRunning) { cloudSaveAgain = true; return; }
+  if (syncConflict || !pendingChanges.size) return;
   cloudSaveRunning = true;
+  const generation = sessionGeneration;
   try {
-    for (const [index, row] of [...body.rows].entries()) {
-      const record = read(row);
-      if (!record.site || row.dataset.validSite !== "true") continue;
-      const voltage = record.voltage.trim().replace(/\s*v$/i, "").replace(",", ".");
-      const payload = {
-        ...(record.id ? { id: record.id } : {}),
-        site: normalizeSite(record.site), priority: record.priority, quantity: record.quantity, ordem: index + 1,
-        technician: record.technician, base: record.base, failure: record.failure,
-        status: record.status, notes: record.notes,
-        voltage: /^\d+(?:\.\d+)?$/.test(voltage) ? Number(voltage) : null,
-      };
-      const { data, error } = await cloudClient.from("atendimentos").upsert(payload, { onConflict: "id" }).select("id").single();
-      if (error) throw error;
-      row.dataset.recordId = data.id;
+    setSyncStatus('Salvando no Supabase…', 'pending');
+    for (const [id, operation] of [...pendingChanges]) {
+      if (generation !== sessionGeneration) return;
+      if (!operation.deleted && !operation.valid) continue;
+      const sent = structuredClone(operation);
+      const saved = await ReportSync.commit(cloudClient, sent);
+      if (generation !== sessionGeneration) return;
+      if (saved) cloudBaseline.set(id, saved); else cloudBaseline.delete(id);
+      const latest = pendingChanges.get(id);
+      if (latest) {
+        const remaining = Object.fromEntries(Object.entries(latest.patch).filter(([key, val]) => !ReportSync.equal(sent.patch[key], val)));
+        if (Object.keys(remaining).length || latest.deleted !== sent.deleted) {
+          pendingChanges.set(id, { ...latest, base: saved, patch: remaining }); cloudSaveAgain = true;
+        } else pendingChanges.delete(id);
+      }
+      persistDraft();
     }
-    note.textContent = "Alterações salvas no Supabase.";
+    setSyncStatus(pendingChanges.size || editProblem ? 'Há campos pendentes. Confira a estação e a tensão antes de sair.' : 'Alterações salvas no Supabase.', pendingChanges.size || editProblem ? 'error' : 'saved');
   } catch (error) {
-    note.textContent = `Não foi possível salvar no Supabase: ${error.message || "verifique a conexão e a Tipologia importada."}`;
+    if (error.name === 'SyncConflict') syncConflict = error;
+    setSyncStatus(`${syncConflict ? 'Conflito entre dispositivos' : 'Falha ao salvar na nuvem'}: ${error.message || 'Verifique a conexão.'} Sua edição permanece neste navegador.`, 'error');
   } finally {
     cloudSaveRunning = false;
-    if (cloudSaveAgain) { cloudSaveAgain = false; saveCloudRows(); }
+    if (cloudSaveAgain && !syncConflict) { cloudSaveAgain = false; saveCloudRows(); }
   }
 }
 
-async function deleteCloudRow(id) {
+function deleteCloudRow(id) {
   if (!id || !cloudClient || !cloudUser) return;
-  const { error } = await cloudClient.from("atendimentos").delete().eq("id", id);
-  if (error) note.textContent = `Não foi possível remover a linha: ${error.message}`;
+  const existing = pendingChanges.get(id);
+  const base = existing?.base || cloudBaseline.get(id);
+  if (!base && !cloudSaveRunning) pendingChanges.delete(id);
+  else pendingChanges.set(id, { id, base: base || null, patch: existing?.patch || {}, deleted: true });
+  observedRows.delete(id); persistDraft();
 }
 
 function hideSitePopover() { sitePopover.classList.add("hidden"); activeSiteInput = null; }
@@ -218,7 +298,8 @@ async function suggestSites(input) {
 function createRow(record = {}) {
   const fragment = template.content.cloneNode(true);
   const row = fragment.querySelector("tr");
-  if (record.id) row.dataset.recordId = record.id;
+  if (cloudClient || record.id) row.dataset.recordId = record.id || crypto.randomUUID();
+  row.dataset.order = record.ordem || Math.max(0, ...[...body.rows].map(item => Number(item.dataset.order) || 0)) + 1;
   if (record.site) row.dataset.validSite = "true";
   // Replace native selects with the same styled combobox used by technicians.
   row.querySelectorAll("select").forEach((select) => {
@@ -234,7 +315,7 @@ function createRow(record = {}) {
     const value = key === "technician" && record[key] === "APOIO OS" ? "APOIO OESTE" : String(record[key] || "");
     input.value = key === "voltage" ? value.trim().replace(/\s*v$/i, "").replace(".", ",") : value;
     paint();
-    ["input", "change"].forEach((event) => input.addEventListener(event, () => { paint(); sync(); }));
+    ["input", "change"].forEach((event) => input.addEventListener(event, () => { if (key === 'site') row.dataset.validSite = ''; paint(); sync(); }));
     if (key === "voltage") input.addEventListener("blur", () => {
       const numeric = input.value.trim().replace(/\s*v$/i, "");
       if (/^\d+(?:[.,]\d+)?$/.test(numeric)) input.value = numeric.replace(".", ",");
@@ -332,16 +413,28 @@ document.addEventListener("mousedown", (event) => { if (!sitePopover.contains(ev
 async function loadReport() {
   if (cloudLoaded) return;
   cloudLoaded = true;
+  const generation = sessionGeneration;
+  if (cloudClient) {
+    failureChoices = cloudOptions.failures; statusChoices = cloudOptions.statuses;
+    technicianBases = cloudOptions.technicianBases || {}; technicianChoices = cloudOptions.technicians;
+    try { pendingChanges = new Map(JSON.parse(localStorage.getItem(draftKey()) || '[]')); } catch { pendingChanges = new Map(); }
+    window.clearInterval(cloudPollTimer);
+    cloudPollTimer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (pendingChanges.size && !syncConflict) saveCloudRows(); else refreshCloudRows();
+    }, 5000);
+  }
   try {
     const [options, report, health] = await Promise.all([request("/api/options"), request("/api/report"), request("/api/health")]);
+    if (generation !== sessionGeneration) return;
     failureChoices = options.failures;
     statusChoices = options.statuses;
     technicianBases = options.technicianBases || {};
     technicianChoices = options.technicians;
     if (cloudClient) {
-      addRows(report.rows.length ? report.rows : [{}]);
-      note.textContent = report.rows.length ? "Relatório sincronizado com o Supabase." : "Tipologia conectada. Adicione uma linha para iniciar o relatório.";
-      window.setInterval(refreshCloudRows, 15_000);
+      acceptCloudRows(report.rows);
+      setSyncStatus(report.rows.length ? "Relatório sincronizado com o Supabase." : "Tipologia conectada. Adicione uma linha para iniciar o relatório.", "saved");
+      if (pendingChanges.size) saveCloudRows();
     } else {
       let saved = null;
       try { saved = JSON.parse(localStorage.getItem(storageKey) || "null"); } catch { /* Start with the workbook when there is no usable browser cache. */ }
@@ -352,13 +445,12 @@ async function loadReport() {
     document.querySelector("#auth-screen").hidden = true;
     document.querySelector("#signout-button").hidden = !cloudClient;
   } catch (error) {
-    cloudLoaded = false;
+    if (generation !== sessionGeneration) return;
     if (cloudClient) {
       let cached = null;
-      try { cached = JSON.parse(localStorage.getItem(reportCacheKey) || "null"); } catch { /* An invalid cache is ignored. */ }
-      note.textContent = `Sem conexão com o Supabase. Exibindo o cache local: ${error.message || "reconecte para sincronizar."}`;
-      addRows(cached?.length ? cached : [{}]);
-      window.setInterval(refreshCloudRows, 15_000);
+      try { cached = JSON.parse(localStorage.getItem(cacheKey()) || "null"); } catch { /* An invalid cache is ignored. */ }
+      acceptCloudRows(cached || []);
+      setSyncStatus(`Sem conexão com o Supabase. Exibindo cópia local, que pode estar desatualizada. ${error.message || "Reconecte para sincronizar."}`, "error");
       document.body.dataset.auth = "ready";
       document.querySelector("#auth-screen").hidden = true;
       document.querySelector("#signout-button").hidden = false;
@@ -369,18 +461,30 @@ async function loadReport() {
   }
 }
 
-async function refreshCloudRows() {
-  if (!cloudClient || !cloudUser || document.activeElement.closest?.("#attendance-table") || cloudSaveRunning || cloudSaveTimer) return;
+async function refreshCloudRows({ onResume = false } = {}) {
+  if (!cloudClient || !cloudUser || cloudRefreshRunning || cloudSaveRunning || cloudSaveTimer || pendingChanges.size || editProblem) return;
+  if (Date.now() - lastGridEditAt < 1200) return;
+  if (!onResume && document.activeElement.closest?.("#attendance-table")) return;
+  cloudRefreshRunning = true;
+  const generation = sessionGeneration;
   try {
     const incoming = await getCloudRows();
+    if (generation !== sessionGeneration || cloudSaveRunning || cloudSaveTimer || pendingChanges.size || Date.now() - lastGridEditAt < 1200) return;
     const current = [...body.rows].map(read).filter((row) => row.site);
     const signature = (rows) => JSON.stringify(rows.map((row) => [...keys.map((key) => row[key] || ""), row.id || ""]));
-    if (signature(incoming) === signature(current)) return;
-    body.replaceChildren();
-    addRows(incoming.length ? incoming : [{}]);
-    records = [...body.rows].map(read);
-    try { localStorage.setItem(reportCacheKey, JSON.stringify(records)); } catch { /* Remote state remains authoritative. */ }
-  } catch { /* Keep the current report visible during a temporary connection interruption. */ }
+    if (signature(incoming.map(displayCloudRow)) === signature(current)) {
+      cloudBaseline = new Map(incoming.map(row => [row.id, row]));
+      try { localStorage.setItem(cacheKey(), JSON.stringify(incoming)); } catch { /* Best effort. */ }
+      setSyncStatus("Relatório sincronizado com o Supabase.", "saved");
+      return;
+    }
+    acceptCloudRows(incoming);
+    setSyncStatus("Relatório atualizado do Supabase.", "saved");
+  } catch (error) {
+    setSyncStatus(`Sem sincronização com o Supabase. Os dados na tela podem estar desatualizados. ${error.message || "Verifique a conexão."}`, "error");
+  } finally {
+    cloudRefreshRunning = false;
+  }
 }
 
 function configureAuthentication() {
@@ -429,11 +533,17 @@ function configureAuthentication() {
     await loadReport();
   });
   document.querySelector("#signout-button").addEventListener("click", async () => {
+    await saveCloudRows();
+    if (pendingChanges.size || editProblem) { setSyncStatus('Existem alterações não salvas. Resolva-as antes de sair.', 'error'); return; }
     await cloudClient.auth.signOut();
   });
   cloudClient.auth.onAuthStateChange((_event, session) => {
     window.setTimeout(async () => {
       if (!session) {
+        sessionGeneration++;
+        window.clearTimeout(cloudSaveTimer); cloudSaveTimer = 0;
+        window.clearInterval(cloudPollTimer);
+        pendingChanges.clear(); cloudBaseline.clear(); observedRows.clear(); syncConflict = null;
         cloudUser = null;
         cloudLoaded = false;
         body.replaceChildren();
@@ -466,4 +576,51 @@ else if (cloudRequested) {
   document.querySelector("#auth-screen").hidden = false;
   document.querySelector("#auth-message").textContent = "O serviço de autenticação não carregou. Verifique a conexão e atualize a página.";
 } else { document.body.dataset.auth = "ready"; loadReport(); }
-window.addEventListener("online", () => { if (cloudClient && cloudUser) saveCloudRows(); });
+window.addEventListener("online", () => {
+  if (!cloudClient || !cloudUser) return;
+  if (pendingChanges.size) saveCloudRows(); else refreshCloudRows({ onResume: true });
+});
+const refreshWhenVisible = () => {
+  if (document.visibilityState === "visible" && cloudClient && cloudUser) {
+    if (pendingChanges.size) saveCloudRows(); else refreshCloudRows({ onResume: true });
+  } else if (document.visibilityState === 'hidden' && pendingChanges.size) saveCloudRows();
+};
+document.addEventListener("visibilitychange", refreshWhenVisible);
+window.addEventListener("focus", refreshWhenVisible);
+window.addEventListener("pageshow", refreshWhenVisible);
+window.addEventListener('beforeunload', event => {
+  if (pendingChanges.size || cloudSaveRunning || editProblem) { event.preventDefault(); event.returnValue = ''; }
+});
+document.querySelector('#retry-sync').addEventListener('click', async () => {
+  if (pendingChanges.size) await saveCloudRows();
+  else { lastGridEditAt = 0; await refreshCloudRows({ onResume: true }); }
+});
+document.querySelector('#resolve-conflict').addEventListener('click', () => {
+  const operation = pendingChanges.get(syncConflict?.id);
+  if (!operation) return;
+  const labels = { site: 'Estação', priority: 'Prioridade', quantity: 'Quantidade', technician: 'Técnico', base: 'Base', failure: 'Falha', status: 'Status', notes: 'Observação', voltage: 'Tensão', ordem: 'Ordem' };
+  const list = document.querySelector('#conflict-values'); list.replaceChildren();
+  for (const key of Object.keys(operation.patch)) {
+    const item = document.createElement('li');
+    item.textContent = `${labels[key] || key}: neste aparelho “${operation.patch[key] ?? ''}”; na nuvem “${syncConflict.remote?.[key] ?? ''}”.`;
+    list.append(item);
+  }
+  document.querySelector('#keep-local').disabled = !syncConflict.remote || Boolean(operation.deleted);
+  document.querySelector('#conflict-dialog').showModal();
+});
+async function resolveConflict(keepLocal) {
+  const conflict = syncConflict;
+  const operation = pendingChanges.get(conflict?.id);
+  if (!operation) return;
+  if (keepLocal && conflict.remote) operation.base = conflict.remote;
+  else pendingChanges.delete(conflict.id);
+  syncConflict = null; persistDraft();
+  document.querySelector('#conflict-dialog').close();
+  setSyncStatus('Sincronizando decisão…', 'pending');
+  lastGridEditAt = 0;
+  if (pendingChanges.size) await saveCloudRows();
+  await refreshCloudRows({ onResume: true });
+}
+document.querySelector('#keep-local').addEventListener('click', () => resolveConflict(true));
+document.querySelector('#use-cloud').addEventListener('click', () => resolveConflict(false));
+document.querySelector('#close-conflict').addEventListener('click', () => document.querySelector('#conflict-dialog').close());
