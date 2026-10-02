@@ -88,16 +88,20 @@ button.summary-card[aria-pressed="true"] { outline: 2px solid var(--report-blue)
 .updated-card .summary-label { font-weight: 400; color: var(--report-muted); }
 #last-cloud-update { font-size: 17px; font-weight: 750; line-height: 1.4; font-variant-numeric: tabular-nums; }
 .updated-card[data-sync="error"] .summary-icon { background: #fbe6e8; color: #a63448; }
-.updated-card[data-sync="error"] #sync-caption { color: #a63448; }
-.report-filters { display: grid; grid-template-columns: 1fr 1fr 1fr 1.03fr; align-items: end; gap: 22px; min-height: 81px; margin: 0 4px 16px; padding: 13px 18px; border: 1px solid #e0e7ef; border-radius: var(--report-radius); background: #fff; }
-.report-filter { display: grid; gap: 5px; min-width: 0; color: #2a3955; font-size: 11px; font-weight: 650; }
-.filter-control { position: relative; display: flex; align-items: center; height: 35px; border: 1px solid #d5dfed; border-radius: 6px; }
-.filter-control > svg:first-child { position: absolute; left: 11px; width: 17px; height: 17px; color: #5c6f8d; pointer-events: none; }
-.filter-control .chevron { position: absolute; right: 10px; width: 13px; height: 13px; color: #697d9a; pointer-events: none; }
-.filter-control select { appearance: none; width: 100%; height: 100%; border: 0; border-radius: inherit; padding: 0 32px 0 38px; background: transparent; color: #415574; font: inherit; font-weight: 400; cursor: pointer; text-overflow: ellipsis; }
-.clear-filters { display: flex; align-items: center; gap: 9px; align-self: center; margin-top: 13px; padding: 6px 0 6px 20px; border: 0; border-left: 1px solid #e5eaf2; background: transparent; color: #536784; font: inherit; font-size: 11px; cursor: pointer; }
-.clear-filters svg { width: 20px; height: 20px; }
-.clear-filters:hover { color: var(--report-blue); }
+.report-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; width: fit-content; max-width: calc(100% - 8px); min-height: 0; margin: 0 4px 12px; padding: 5px 6px; border: 1px solid #dce5f0; border-radius: 10px; background: #f7f9fc; box-shadow: inset 0 1px 0 rgba(255,255,255,.9); }
+.report-filter { display: flex; flex: 0 1 auto; min-width: 0; color: #2a3955; font-size: 11px; font-weight: 650; }
+.filter-control { position: relative; display: flex; align-items: center; height: 34px; border: 1px solid transparent; border-radius: 7px; background: transparent; transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease; }
+.filter-control:hover { border-color: #dbe5f1; background: #fff; }
+.filter-control:focus-within { border-color: #a9bfdf; background: #fff; box-shadow: 0 0 0 3px rgba(29,89,184,.1); }
+.filter-control > svg:first-child { position: absolute; left: 9px; width: 16px; height: 16px; color: #5c6f8d; pointer-events: none; }
+.filter-control .chevron { position: absolute; right: 8px; width: 12px; height: 12px; color: #697d9a; pointer-events: none; }
+.filter-control select { appearance: none; width: 100%; height: 100%; border: 0; border-radius: inherit; padding: 0 27px 0 31px; background: transparent; color: #415574; font: inherit; font-size: 11px; font-weight: 450; cursor: pointer; text-overflow: ellipsis; }
+#filter-base { width: 174px; }
+#filter-priority { width: 194px; }
+#filter-status { width: 174px; }
+.clear-filters { display: flex; align-items: center; gap: 6px; align-self: center; margin: 0; padding: 4px 7px 4px 10px; border: 0; border-left: 1px solid #dce5f0; border-radius: 0 6px 6px 0; background: transparent; color: #61748f; font: inherit; font-size: 10.5px; cursor: pointer; white-space: nowrap; }
+.clear-filters svg { width: 16px; height: 16px; }
+.clear-filters:hover { color: var(--report-blue); background: #edf3fc; }
 .toolbar { display: none; margin: -2px 4px 12px; padding: 9px 12px; border-radius: 6px; }
 .toolbar[data-sync="error"], .toolbar:has(#resolve-conflict:not([hidden])) { display: flex; background: #fff2f2; border: 1px solid #efccd0; }
 .toolbar .sort-summary { display: none; }
@@ -175,7 +179,7 @@ button:focus-visible, summary:focus-visible, select:focus-visible, a:focus-visib
   .shift-meta { order: 2; margin-left: auto; }
   .report-search { max-width: none; }
   .report-overview { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .report-filters { grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; }
+  .report-filters { gap: 8px; }
 }
 @media (min-width: 1201px) and (max-width: 1360px) {
   .topbar { gap: 12px; }
@@ -218,10 +222,9 @@ button:focus-visible, summary:focus-visible, select:focus-visible, a:focus-visib
   .summary-footnote,.summary-measure { font-size: 10px; }
   .card-chevron { display: none; }
   #last-cloud-update { font-size: 14px; overflow-wrap: anywhere; line-height: 1.25; }
-  .report-filters { grid-template-columns: 1fr; padding: 14px; gap: 12px; margin-bottom: 14px; }
-  .report-filter { font-size: 12px; }
+  .report-filters { padding: 7px; gap: 7px; margin-bottom: 12px; }
   .filter-control { height: 40px; }
-  .clear-filters { border: 0; margin-top: 0; padding: 8px 0; justify-self: start; font-size: 12px; }
+  .clear-filters { min-height: 44px; border: 0; margin: 0; padding: 0 8px; justify-self: start; font-size: 12px; }
   .table-wrap { margin: 0; border: 1px solid #d7e1ed; border-radius: 8px; }
   #attendance-table .cell-input { font-size: 12px; min-height: 32px; }
   #attendance-table .status-input { font-size: 10px; }

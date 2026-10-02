@@ -66,7 +66,6 @@
   }
   function sync(message,state) {
     $('notification-sync').textContent = message;
-    $('sync-caption').textContent = state==='saved' ? 'Sincronizado com o Supabase' : state==='error' ? 'Atenção à sincronização' : state==='pending' ? 'Alterações pendentes' : 'Consultando dados';
     document.querySelector('.updated-card').dataset.sync=state;
     document.querySelector('.toolbar').dataset.sync=state;
     $('retry-sync').setAttribute('aria-busy',String(state==='pending'));
