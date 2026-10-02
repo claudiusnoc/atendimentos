@@ -10,7 +10,7 @@ html, body { background: var(--report-bg); color: var(--report-ink); }
 body { font-family: Aptos, "Segoe UI", sans-serif; }
 ::selection { background: #d9e7ff; color: #142b51; }
 input, textarea { caret-color: var(--report-blue); }
-.app-shell { padding: 52px 16px 24px; background: transparent; }
+.app-shell { padding: 0 16px 24px; background: transparent; }
 .topbar { display: flex; height: 52px; min-height: 52px; gap: 20px; padding: 0 12px; border: 0; border-radius: 12px; background: #fff; box-shadow: 0 5px 16px #22395608; }
 .brand { gap: 12px; }
 .brand-logo { width: 38px; height: 32px; flex-basis: 38px; border: 1px solid #f6d9dd; border-radius: 8px; }
