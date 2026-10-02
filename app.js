@@ -55,6 +55,7 @@ function rememberScreen() {
 }
 function acceptCloudRows(rows) {
   cloudBaseline = new Map(rows.map(row => [row.id, { ...row }]));
+  window.reportDashboard?.confirmed(rows);
   const displayed = new Map(rows.map(row => [row.id, { ...row }]));
   for (const [id, operation] of pendingChanges) {
     if (operation.deleted) displayed.delete(id);
@@ -70,6 +71,7 @@ function acceptCloudRows(rows) {
 function setSyncStatus(message, state = "neutral") {
   note.textContent = message;
   note.dataset.sync = state;
+  window.reportDashboard?.sync(message, state);
   const resolve = document.querySelector('#resolve-conflict');
   if (resolve) resolve.hidden = !syncConflict;
 }
@@ -153,7 +155,10 @@ const save = () => {
   }
 };
 const read = (row) => ({ ...Object.fromEntries(Object.entries(fields(row)).map(([key, element]) => [key, element.value.trim()])), id: row.dataset.recordId || "" });
-const updateCount = () => {};
+const updateCount = () => {
+  window.reportDashboard?.update([...body.rows].filter(row => row.dataset.validSite === 'true').map(read));
+  applySearch();
+};
 const sync = () => {
   lastGridEditAt = Date.now(); records = [...body.rows].map(read); editProblem = false;
   if (cloudClient && cloudUser) {
@@ -193,7 +198,8 @@ function sortableValue(record, key) {
 }
 function applySearch() {
   const query = document.querySelector("#search").value.toLocaleLowerCase("pt-BR");
-  [...body.rows].forEach((row) => { row.hidden = !Object.values(read(row)).join(" ").toLocaleLowerCase("pt-BR").includes(query); });
+  [...body.rows].forEach((row) => { const record = read(row); row.hidden = !Object.values(record).join(" ").toLocaleLowerCase("pt-BR").includes(query) || (window.reportDashboard && !window.reportDashboard.matches(record)); });
+  window.reportDashboard?.visible([...body.rows].filter(row => !row.hidden && row.dataset.validSite === 'true').length);
 }
 function updateSortIndicators() {
   document.querySelectorAll(".sort-button").forEach((button) => {
@@ -247,6 +253,7 @@ async function saveCloudRows() {
       const saved = await ReportSync.commit(cloudClient, sent);
       if (generation !== sessionGeneration) return;
       if (saved) cloudBaseline.set(id, saved); else cloudBaseline.delete(id);
+      window.reportDashboard?.confirmed([...cloudBaseline.values()]);
       const latest = pendingChanges.get(id);
       if (latest) {
         const remaining = Object.fromEntries(Object.entries(latest.patch).filter(([key, val]) => !ReportSync.equal(sent.patch[key], val)));
@@ -303,18 +310,25 @@ function createRow(record = {}) {
   if (record.site) row.dataset.validSite = "true";
   // Replace native selects with the same styled combobox used by technicians.
   row.querySelectorAll("select").forEach((select) => {
-    const input = document.createElement("input");
+    const input = document.createElement("textarea");
+    input.rows = 1;
     input.className = select.className;
     input.setAttribute("aria-label", select.getAttribute("aria-label"));
     input.autocomplete = "off";
     select.replaceWith(input);
   });
+  const oldNotes = row.querySelector('.notes-input');
+  const notesArea = document.createElement('textarea');
+  notesArea.className = oldNotes.className; notesArea.rows = 1;
+  notesArea.setAttribute('aria-label', 'Observação');
+  oldNotes.replaceWith(notesArea);
   const rowFields = fields(row);
   Object.entries(rowFields).forEach(([key, input]) => {
     const paint = () => { if (key === "priority") paintPriority(input); if (key === "status") paintStatus(input); if (key === "failure") paintFailure(input); if (key === "voltage") paintVoltage(input); };
     const value = key === "technician" && record[key] === "APOIO OS" ? "APOIO OESTE" : String(record[key] || "");
     input.value = key === "voltage" ? value.trim().replace(/\s*v$/i, "").replace(".", ",") : value;
     paint();
+    if (key === 'notes') input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); input.blur(); } });
     ["input", "change"].forEach((event) => input.addEventListener(event, () => { if (key === 'site') row.dataset.validSite = ''; paint(); sync(); }));
     if (key === "voltage") input.addEventListener("blur", () => {
       const numeric = input.value.trim().replace(/\s*v$/i, "");
@@ -385,7 +399,7 @@ function exportCsv() {
   const link = Object.assign(document.createElement("a"), { href:url, download:"relatorio-atendimentos.csv" }); link.click(); URL.revokeObjectURL(url);
 }
 
-document.querySelector("#add-row-button").addEventListener("click", () => { createRow(); sync(); body.lastElementChild.querySelector(".site-input").focus(); });
+document.querySelector("#add-row-button").addEventListener("click", () => { window.reportDashboard?.clear(); createRow(); sync(); body.lastElementChild.querySelector(".site-input").focus(); });
 const supervisorPicker = document.querySelector("#shift-supervisor");
 try {
   const savedSupervisor = localStorage.getItem("atendimentos.shift-supervisor.v1");
@@ -474,6 +488,7 @@ async function refreshCloudRows({ onResume = false } = {}) {
     const signature = (rows) => JSON.stringify(rows.map((row) => [...keys.map((key) => row[key] || ""), row.id || ""]));
     if (signature(incoming.map(displayCloudRow)) === signature(current)) {
       cloudBaseline = new Map(incoming.map(row => [row.id, row]));
+      window.reportDashboard?.confirmed(incoming);
       try { localStorage.setItem(cacheKey(), JSON.stringify(incoming)); } catch { /* Best effort. */ }
       setSyncStatus("Relatório sincronizado com o Supabase.", "saved");
       return;

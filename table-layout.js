@@ -2,7 +2,7 @@
 (() => {
   const table = document.querySelector("#attendance-table");
   const wrapper = table.closest(".table-wrap");
-  const storageKey = "atendimentos.column-widths.v1";
+  const storageKey = "atendimentos.column-widths.v2";
   const columns = [
     { key: "site", label: "estação", width: 124, min: 104, icon: '<circle cx="12" cy="6" r="1.5"/><path d="m12 8-5 13m5-13 5 13M9 16h6M5 3a7 7 0 0 0 0 8M19 3a7 7 0 0 1 0 8"/>' },
     { key: "priority", label: "prioridade", width: 128, min: 112, icon: '<path d="m6 11 6-6 6 6M6 18l6-6 6 6"/>' },
@@ -14,6 +14,9 @@
     { key: "notes", label: "observação", width: 180, min: 144, icon: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>' },
     { key: "voltage", label: "tensão", width: 92, min: 84, icon: '<path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z"/>' },
   ];
+  const compactWidths = [96, 100, 148, 132, 84, 110, 128, 240, 80];
+  const compactMinimums = [84, 90, 112, 104, 74, 100, 116, 180, 72];
+  columns.forEach((column, index) => { column.width = compactWidths[index]; column.min = compactMinimums[index]; });
   let saved = {};
   try {
     const value = JSON.parse(localStorage.getItem(storageKey) || "{}");
@@ -35,14 +38,14 @@
   function renderWidths() {
     // Spare desktop space belongs to observations, never to short code fields.
     const rendered = [...widths];
-    if (!Number.isFinite(saved.notes)) rendered[7] += Math.max(0, wrapper.clientWidth - 40 - widths.reduce((sum, width) => sum + width, 0));
+    if (!Number.isFinite(saved.notes)) rendered[7] += Math.max(0, wrapper.clientWidth - 28 - widths.reduce((sum, width) => sum + width, 0));
     rendered.forEach((width, index) => {
       colElements[index].style.width = `${width}px`;
       handles[index]?.setAttribute("aria-valuenow", String(width));
       handles[index]?.setAttribute("aria-valuetext", `${width} pixels`);
     });
-    colElements[9].style.width = "40px";
-    table.style.width = `${rendered.reduce((sum, width) => sum + width, 40)}px`;
+    colElements[9].style.width = "28px";
+    table.style.width = `${rendered.reduce((sum, width) => sum + width, 28)}px`;
   }
   function persist() {
     try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch { /* Resizing still works when storage is unavailable. */ }
