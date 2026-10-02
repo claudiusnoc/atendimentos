@@ -147,6 +147,9 @@ body { overflow-x: hidden; }
 .shift-datetime { display: flex; align-items: center; gap: 6px; color: #647078; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .shift-datetime svg { width: 15px; height: 15px; color: #87939a; }
 .toolbar { min-height: 0; margin: 0 24px; padding: 0; border: 0; justify-content: flex-end; }
+.sync-state { max-width: min(100%, 680px); margin: 0; padding: 5px 9px; border: 1px solid #dce7df; border-radius: 999px; color: #3d6b50; background: #f3f8f4; font-size: 10px; line-height: 1.35; text-align: right; }
+.sync-state[data-sync="error"] { border-color: #efd4c4; color: #8c472a; background: #fff7f1; }
+.sync-state[data-sync="neutral"] { border-color: #e0e5e7; color: #66737a; background: #f7f9fa; }
 .report { padding: 0 24px 24px; }
 .sort-summary { color: #435158; font-size: 12px; }
 .sort-summary:empty { display: none; }

@@ -36,7 +36,8 @@
   let drag = null;
 
   function renderWidths() {
-    // Spare desktop space belongs to observations, never to short code fields.
+    // Keep the table edge flush with its viewport. Observations absorb spare width,
+    // including when a saved column preference would otherwise leave a blank gutter.
     const rendered = [...widths];
     rendered[7] += Math.max(0, wrapper.clientWidth - 28 - widths.reduce((sum, width) => sum + width, 0));
     rendered.forEach((width, index) => {

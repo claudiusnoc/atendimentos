@@ -59,9 +59,7 @@ button.summary-card:hover { border-color: #a6b9d3; }
 button.summary-card[aria-pressed="true"] { outline: 2px solid var(--report-blue); outline-offset: -2px; }
 .summary-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 0; background: transparent; color: #4c5f7a; }
 .summary-icon svg { width: 22px; height: 22px; }
-.critical-card .summary-icon, .gmg-card .summary-icon { width: 48px; height: 48px; flex-basis: 48px; border: 0; border-radius: 10px; }
-.critical-card .summary-icon { background: #ffedf1; }
-.gmg-card .summary-icon { background: #eaf6ee; }
+.critical-card .summary-icon, .gmg-card .summary-icon { width: 48px; height: 48px; flex-basis: 48px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .critical-site-icon, .gmg-generator-icon { display: block; width: 31px; height: 31px; max-width: none; object-fit: contain; }
 .critical-site-icon { width: 37px; height: 37px; }
 .gmg-generator-icon { width: 43px; height: 43px; }
@@ -119,7 +117,40 @@ button.summary-card[aria-pressed="true"] { outline: 2px solid var(--report-blue)
 #attendance-table .priority-input:not([data-priority="nivel-5"]):not([data-priority=""]) { color: #fff; }
 #attendance-table .status-input { font-size: 10px; line-height: 18px; font-weight: 700; }
 #attendance-table .status-input[data-status="gmg-acoplado"], #attendance-table .status-input[data-status="em-deslocamento"], #attendance-table .status-input[data-status="sem-acesso"] { color: #fff; }
-#attendance-table .priority-input[data-priority="nivel-4"] { background: #d6a300; color: #322500; }
+/* Warmer, more saturated semantic colors; the existing 3D surface treatment stays intact. */
+#attendance-table .priority-input[data-priority="nivel-0"] { background-color: #15171b; color: #fff; }
+#attendance-table .priority-input[data-priority="nivel-1"] { background-color: #c51620; color: #fff; }
+#attendance-table .priority-input[data-priority="nivel-2"] { background-color: #7736ac; color: #fff; }
+#attendance-table .priority-input[data-priority="nivel-3"] { background-color: #a94b12; color: #fff; }
+#attendance-table .priority-input[data-priority="nivel-4"] { background-color: #d9a900; color: #352700; }
+#attendance-table .priority-input[data-priority="nivel-5"] { background-color: #fbfcff; color: #253b59; }
+#attendance-table .priority-input[data-priority="em-implantacao"] { background-color: #3f8227; color: #fff; }
+#attendance-table .status-input[data-status="acionado"] { background-color: #88cc6e; color: #183d1e; }
+#attendance-table .status-input[data-status="gmg-acoplado"] { background-color: #227a30; color: #fff; }
+#attendance-table .status-input[data-status="monitorando"] { background-color: #e38121; color: #482500; }
+#attendance-table .status-input[data-status="indisp-tecnica"] { background-color: #f7c93e; color: #463300; }
+#attendance-table .status-input[data-status="sem-acesso"] { background-color: #c51620; color: #fff; }
+#attendance-table .status-input[data-status="em-deslocamento"] { background-color: #1c5ebe; color: #fff; }
+/* Raised, tactile finish for populated priority and status cells. The translucent
+   highlights preserve each semantic color while adding a quiet bevel. */
+#attendance-table .priority-input[data-priority]:not([data-priority=""]),
+#attendance-table .status-input[data-status]:not([data-status=""]) {
+  border: 1px solid rgba(20, 31, 48, .16);
+  border-radius: 5px;
+  background-image: linear-gradient(180deg, rgba(255,255,255,.34) 0%, rgba(255,255,255,.12) 24%, rgba(255,255,255,0) 49%, rgba(0,0,0,.09) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -1px 0 rgba(0,0,0,.12), 0 1px 1px rgba(20,31,48,.12);
+  text-shadow: 0 1px 0 rgba(0,0,0,.08);
+  transition: filter .14s ease, box-shadow .14s ease, transform .14s ease;
+}
+#attendance-table .priority-input[data-priority]:not([data-priority=""]):hover,
+#attendance-table .status-input[data-status]:not([data-status=""]):hover { filter: brightness(1.06); }
+#attendance-table .priority-input[data-priority]:not([data-priority=""]):active,
+#attendance-table .status-input[data-status]:not([data-status=""]):active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.18), inset 0 -1px 0 rgba(255,255,255,.16);
+}
+#attendance-table .priority-input[data-priority]:not([data-priority=""]):focus,
+#attendance-table .status-input[data-status]:not([data-status=""]):focus { filter: brightness(1.04); }
 #attendance-table textarea.cell-input { display: block; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 26px; font-family: inherit; }
 #attendance-table .notes-input { font-size: 10.5px; text-align: left; }
 #attendance-table .failure-input[data-failure="inoperante"] { color: #4b535a; }
