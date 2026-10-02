@@ -1,0 +1,16 @@
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+supabase/.temp/
+supabase/tipologia-import.csv
+supabase/tipologia-import.json
+
+# Dependencies and operating-system files
+node_modules/
+.DS_Store
+Thumbs.db

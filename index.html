@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Relatório operacional de atendimentos massivos." />
+    <title>Atendimentos | Relatório operacional</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="refinements.css" />
+  </head>
+  <body>
+    <section class="auth-screen" id="auth-screen" hidden aria-labelledby="auth-title">
+      <form class="auth-card" id="auth-form">
+        <img class="auth-logo" src="eqs_engenharia_logo.jpg" alt="" />
+        <p class="auth-eyebrow">RELATÓRIO OPERACIONAL</p>
+        <h1 id="auth-title">Acesse o relatório</h1>
+        <p class="auth-copy">Entre com seu e-mail e senha para consultar e editar os atendimentos.</p>
+        <label for="auth-email">E-mail</label>
+        <input id="auth-email" name="email" type="email" autocomplete="username" required />
+        <label for="auth-password">Senha</label>
+        <input id="auth-password" name="password" type="password" autocomplete="current-password" required minlength="6" />
+        <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
+        <button class="auth-submit" id="auth-submit" type="submit">Entrar</button>
+        <button class="auth-switch" id="auth-switch" type="button">Criar uma conta</button>
+      </form>
+    </section>
+    <main class="app-shell" id="top">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="Status atendimentos METRO"><img class="brand-logo" src="eqs_engenharia_logo.jpg" alt="" aria-hidden="true" /><span class="brand-name">STATUS ATENDIMENTOS · METRO</span></a>
+        <label class="search header-search" for="search"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 4 4"></path></svg><input id="search" type="search" aria-label="Buscar instalação, técnico ou falha" placeholder="Buscar instalação, técnico ou falha" /></label>
+        <div class="topbar-spacer"></div>
+        <div class="shift-meta">
+          <button class="export-icon" id="export-button" type="button" aria-label="Exportar relatório em CSV" title="Exportar CSV"><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9m-3-3 3 3 3-3"/><path d="M4 12v4h12v-4"/></svg></button>
+          <span class="shift-datetime"><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7.25"/><path d="M10 5.5V10l3 1.8"/></svg><time id="report-clock"></time></span>
+          <span class="supervisor-profile">
+            <span class="supervisor-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.4-3.7 2.7-5.6 6.5-5.6s6.1 1.9 6.5 5.6"/></svg></span>
+            <span class="supervisor-profile-copy"><span id="supervisor-name">Claudius Igor</span><span class="supervisor-role">Supervisor operacional</span></span>
+            <svg class="profile-chevron" aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m5 7 5 5 5-5"/></svg>
+            <label class="sr-only" for="shift-supervisor">Selecionar supervisor operacional</label>
+            <select id="shift-supervisor" aria-label="Selecionar supervisor operacional"><option value="CLAUDIUS IGOR" data-display-name="Claudius Igor">Claudius Igor</option><option value="LEANDRO MENEZES" data-display-name="Leandro Menezes">Leandro Menezes</option></select>
+          </span>
+          <button class="signout-button" id="signout-button" type="button" hidden>Sair</button>
+        </div>
+      </header>
+      <section class="toolbar" aria-label="Estado do relatório">
+        <span id="sort-summary" class="sort-summary" role="status"></span>
+        <p id="source-note" class="sr-only" role="status" aria-live="polite">Carregando referências…</p>
+      </section>
+      <section class="report" id="relatorio" aria-labelledby="report-title">
+        <h1 id="report-title" class="sr-only">Relatório de atendimentos</h1>
+        <div class="table-wrap"><table id="attendance-table"><caption class="sr-only">Lista editável de atendimentos massivos</caption><thead><tr><th data-sort-key="site"><button class="sort-button" type="button" data-sort-key="site" aria-label="Classificar por estação" aria-pressed="false">ESTAÇÃO<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="priority"><button class="sort-button" type="button" data-sort-key="priority" aria-label="Classificar por prioridade" aria-pressed="false">PRIORIDADE<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="quantity"><button class="sort-button" type="button" data-sort-key="quantity" aria-label="Classificar por quantidade de instalações" aria-pressed="false">QUANTIDADE DE INSTALAÇÕES<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="technician"><button class="sort-button" type="button" data-sort-key="technician" aria-label="Classificar por técnico" aria-pressed="false">TÉCNICO<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="base"><button class="sort-button" type="button" data-sort-key="base" aria-label="Classificar por base técnica" aria-pressed="false">BASE TÉCNICA<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="failure"><button class="sort-button" type="button" data-sort-key="failure" aria-label="Classificar por falha" aria-pressed="false">FALHA<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="status"><button class="sort-button" type="button" data-sort-key="status" aria-label="Classificar por status" aria-pressed="false">STATUS<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th>OBSERVAÇÃO</th><th>TENSÃO</th><th><span class="sr-only">AÇÕES</span></th></tr></thead><tbody id="records"></tbody></table></div>
+        <div class="report-actions"><button class="add-line-button" id="add-row-button" type="button" aria-label="Adicionar linha" title="Adicionar linha"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg></button></div>
+      </section>
+      <datalist id="technician-options"></datalist><div class="site-popover hidden" id="site-popover" role="listbox" aria-label="Sugestões de instalações"></div>
+    </main>
+    <template id="row-template"><tr><td data-label="Instalação"><input class="cell-input site-input" autocomplete="off" aria-label="Instalação" /></td><td data-label="Prioridade"><input class="cell-input priority-input" aria-label="Prioridade" /></td><td data-label="Qtd instalações"><input class="cell-input quantity-input" aria-label="Quantidade de instalações" /></td><td data-label="Técnico"><input class="cell-input technician-input" list="technician-options" autocomplete="off" aria-label="Técnico" /></td><td data-label="Base técnica"><input class="cell-input base-input" aria-label="Base técnica" /></td><td data-label="Falha"><select class="cell-input failure-input" aria-label="Falha"><option value=""></option></select></td><td data-label="Status"><select class="cell-input status-input" aria-label="Status"><option value=""></option></select></td><td data-label="Observação"><input class="cell-input notes-input" aria-label="Observação" /></td><td data-label="Tensão"><span class="voltage-field"><input class="cell-input voltage-input" inputmode="decimal" aria-label="Tensão" /><span class="voltage-unit" aria-hidden="true">V</span></span></td><td class="action-cell"><button class="remove-button" type="button" aria-label="Remover linha">Remover</button></td></tr></template>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="table-layout.js" defer></script>
+    <script src="cell-options.js" defer></script>
+    <script src="app.js" defer></script>
+  </body>
+</html>
