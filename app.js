@@ -1,5 +1,6 @@
 const keys = ["site", "priority", "quantity", "technician", "base", "failure", "status", "notes", "voltage"];
 const storageKey = "atendimentos.grid.v4";
+const authRecoveryRequested = new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery";
 const cloudConfig = window.ATENDIMENTOS_SUPABASE;
 const cloudOptions = window.ATENDIMENTOS_OPTIONS;
 const cloudRequested = Boolean(cloudConfig?.url && cloudConfig?.key);
@@ -25,7 +26,6 @@ let cloudSaveAgain = false;
 let cloudRefreshRunning = false;
 let cloudLoaded = false;
 let lastGridEditAt = 0;
-let authMode = "signin";
 let cloudPollTimer = 0;
 let cloudBaseline = new Map();
 let observedRows = new Map();
@@ -505,29 +505,71 @@ async function refreshCloudRows({ onResume = false } = {}) {
 function configureAuthentication() {
   const screen = document.querySelector("#auth-screen");
   const form = document.querySelector("#auth-form");
+  const codeInput = document.querySelector("#auth-code");
   const message = document.querySelector("#auth-message");
   const submit = document.querySelector("#auth-submit");
-  const switchButton = document.querySelector("#auth-switch");
-  const setMode = (mode) => {
-    authMode = mode;
-    document.querySelector("#auth-title").textContent = mode === "signin" ? "Acesse o relatório" : "Crie sua conta";
-    document.querySelector(".auth-copy").textContent = mode === "signin" ? "Entre com seu e-mail e senha para consultar e editar os atendimentos." : "Use seu e-mail de trabalho para criar o acesso ao relatório.";
-    submit.textContent = mode === "signin" ? "Entrar" : "Criar conta";
-    switchButton.textContent = mode === "signin" ? "Criar uma conta" : "Já tenho uma conta";
-    message.textContent = "";
+  const recoveryForm = document.querySelector("#password-recovery-form");
+  const recoveryMessage = document.querySelector("#recovery-message");
+  const recoverySubmit = document.querySelector("#recovery-submit");
+  const newCodeInput = document.querySelector("#new-access-code");
+  const confirmCodeInput = document.querySelector("#confirm-access-code");
+  const title = document.querySelector("#auth-title");
+  const copy = document.querySelector("#auth-copy");
+  let recoveryMode = authRecoveryRequested;
+  let recoverySessionReady = false;
+  let recoveryValidationTimer = 0;
+  const showLogin = (notice = "") => {
+    recoveryMode = false;
+    recoverySessionReady = false;
+    window.clearTimeout(recoveryValidationTimer);
+    title.textContent = "Acesse o relatório";
+    copy.textContent = "Digite o código de acesso para consultar e editar os atendimentos.";
+    form.hidden = false;
+    recoveryForm.hidden = true;
+    recoverySubmit.disabled = false;
+    if (notice) message.textContent = notice;
+    screen.hidden = false;
+    document.body.dataset.auth = "locked";
   };
-  switchButton.addEventListener("click", () => setMode(authMode === "signin" ? "signup" : "signin"));
+  const showRecovery = (sessionReady, notice) => {
+    recoveryMode = true;
+    recoverySessionReady = sessionReady;
+    title.textContent = "Defina seu código de acesso";
+    copy.textContent = "Crie um novo código numérico de seis dígitos para acessar o relatório.";
+    form.hidden = true;
+    recoveryForm.hidden = false;
+    recoverySubmit.disabled = !sessionReady;
+    recoveryMessage.textContent = notice || (sessionReady ? "Confirme o novo código para salvar." : "Link inválido ou expirado. Solicite um novo link de recuperação.");
+    screen.hidden = false;
+    document.body.dataset.auth = "locked";
+  };
+  const clearAuthHash = () => {
+    if (!window.location.hash) return;
+    window.history.replaceState(null, document.title, `${window.location.pathname}${window.location.search}`);
+  };
+  const digitsOnly = (input) => {
+    input.addEventListener("input", () => {
+      const digits = input.value.replace(/\D/g, "").slice(0, 6);
+      if (input.value !== digits) input.value = digits;
+    });
+  };
+  digitsOnly(codeInput);
+  digitsOnly(newCodeInput);
+  digitsOnly(confirmCodeInput);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     submit.disabled = true;
-    message.textContent = authMode === "signin" ? "Validando acesso…" : "Criando acesso…";
-    const email = form.elements.email.value.trim();
-    const password = form.elements.password.value;
+    message.textContent = "Validando acesso…";
+    const code = codeInput.value;
+    if (!/^\d{6}$/.test(code)) {
+      submit.disabled = false;
+      message.textContent = "Digite os seis números do código de acesso.";
+      codeInput.focus();
+      return;
+    }
     let result;
     try {
-      result = authMode === "signin"
-        ? await cloudClient.auth.signInWithPassword({ email, password })
-        : await cloudClient.auth.signUp({ email, password });
+      result = await cloudClient.auth.signInWithPassword({ email: "claudius.rangel@eqsengenharia.com.br", password: code });
     } catch (error) {
       submit.disabled = false;
       message.textContent = error.message || "Não foi possível conectar ao serviço de autenticação.";
@@ -535,11 +577,9 @@ function configureAuthentication() {
     }
     submit.disabled = false;
     if (result.error) {
-      message.textContent = result.error.message;
-      return;
-    }
-    if (authMode === "signup" && !result.data.session) {
-      message.textContent = "Conta criada. Confirme o e-mail enviado e depois entre no relatório.";
+      message.textContent = /invalid login credentials/i.test(result.error.message || "")
+        ? "Código inválido. Confira os seis números e tente novamente."
+        : result.error.message;
       return;
     }
     cloudUser = result.data.user || result.data.session?.user || null;
@@ -547,13 +587,60 @@ function configureAuthentication() {
     document.body.dataset.auth = "ready";
     await loadReport();
   });
+  recoveryForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!recoverySessionReady) {
+      recoveryMessage.textContent = "Link inválido ou expirado. Solicite um novo link de recuperação.";
+      return;
+    }
+    const newCode = newCodeInput.value;
+    const confirmCode = confirmCodeInput.value;
+    if (!/^\d{6}$/.test(newCode) || !/^\d{6}$/.test(confirmCode)) {
+      recoveryMessage.textContent = "O código deve conter exatamente seis números.";
+      return;
+    }
+    if (newCode !== confirmCode) {
+      recoveryMessage.textContent = "Os códigos não coincidem. Confira os dois campos.";
+      confirmCodeInput.focus();
+      return;
+    }
+    recoverySubmit.disabled = true;
+    recoveryMessage.textContent = "Salvando novo código…";
+    try {
+      const { error } = await cloudClient.auth.updateUser({ password: newCode });
+      if (error) throw error;
+      recoveryMode = false;
+      recoverySessionReady = false;
+      clearAuthHash();
+      newCodeInput.value = "";
+      confirmCodeInput.value = "";
+      showLogin("Código atualizado. Entre com o novo código para acessar o relatório.");
+      recoveryMessage.textContent = "";
+      const { error: signOutError } = await cloudClient.auth.signOut({ scope: "global" });
+      if (signOutError) message.textContent = "Código atualizado. Saia das outras sessões antes de testar o novo acesso.";
+    } catch (error) {
+      recoverySubmit.disabled = false;
+      recoveryMessage.textContent = error.message || "Não foi possível salvar. Verifique o link e a conexão e tente novamente.";
+    }
+  });
   document.querySelector("#signout-button").addEventListener("click", async () => {
     await saveCloudRows();
     if (pendingChanges.size || editProblem) { setSyncStatus('Existem alterações não salvas. Resolva-as antes de sair.', 'error'); return; }
     await cloudClient.auth.signOut();
   });
-  cloudClient.auth.onAuthStateChange((_event, session) => {
+  cloudClient.auth.onAuthStateChange((event, session) => {
     window.setTimeout(async () => {
+      if (event === "PASSWORD_RECOVERY") {
+        recoverySessionReady = true;
+        window.clearTimeout(recoveryValidationTimer);
+        showRecovery(true, "Link validado. Defina e confirme o novo código.");
+        clearAuthHash();
+        return;
+      }
+      if (recoveryMode && session) {
+        showRecovery(false, "Aguardando a validação do link de recuperação…");
+        return;
+      }
       if (!session) {
         sessionGeneration++;
         window.clearTimeout(cloudSaveTimer); cloudSaveTimer = 0;
@@ -562,8 +649,11 @@ function configureAuthentication() {
         cloudUser = null;
         cloudLoaded = false;
         body.replaceChildren();
-        screen.hidden = false;
-        document.body.dataset.auth = "locked";
+        if (recoveryMode) {
+          window.clearTimeout(recoveryValidationTimer);
+          showRecovery(false, "Link inválido ou expirado. Solicite um novo link de recuperação.");
+        }
+        else showLogin();
         document.querySelector("#signout-button").hidden = true;
         return;
       }
@@ -575,21 +665,52 @@ function configureAuthentication() {
     }, 0);
   });
   document.body.dataset.auth = "locked";
-  screen.hidden = false;
+  if (recoveryMode) {
+    showRecovery(false, "Validando o link de recuperação…");
+    recoveryValidationTimer = window.setTimeout(() => {
+      if (recoveryMode && !recoverySessionReady) showRecovery(false, "Link inválido ou expirado. Solicite um novo link de recuperação.");
+    }, 8000);
+  }
+  else showLogin();
   cloudClient.auth.getSession().then(({ data: { session } }) => {
+    if (recoveryMode) {
+      if (session && recoverySessionReady) {
+        window.clearTimeout(recoveryValidationTimer);
+        showRecovery(true, "Link validado. Defina e confirme o novo código.");
+        clearAuthHash();
+      } else if (session) showRecovery(false, "Aguardando a validação do link de recuperação…");
+      else {
+        window.clearTimeout(recoveryValidationTimer);
+        showRecovery(false, "Link inválido ou expirado. Solicite um novo link de recuperação.");
+      }
+      return;
+    }
     if (session) {
       cloudUser = session.user;
       screen.hidden = true;
       loadReport();
     }
-  }).catch(() => { message.textContent = "Não foi possível validar a sessão. Atualize a página e tente novamente."; });
+  }).catch(() => {
+    if (recoveryMode) {
+      window.clearTimeout(recoveryValidationTimer);
+      showRecovery(false, "Não foi possível validar o link. Confira a conexão ou solicite um novo link.");
+    }
+    else message.textContent = "Não foi possível validar a sessão. Atualize a página e tente novamente.";
+  });
 }
 
 if (cloudClient) configureAuthentication();
 else if (cloudRequested) {
   document.body.dataset.auth = "locked";
   document.querySelector("#auth-screen").hidden = false;
-  document.querySelector("#auth-message").textContent = "O serviço de autenticação não carregou. Verifique a conexão e atualize a página.";
+  if (authRecoveryRequested) {
+    document.querySelector("#auth-title").textContent = "Recuperação indisponível";
+    document.querySelector("#auth-copy").textContent = "O serviço de autenticação não carregou.";
+    document.querySelector("#auth-form").hidden = true;
+    document.querySelector("#password-recovery-form").hidden = false;
+    document.querySelector("#recovery-submit").disabled = true;
+    document.querySelector("#recovery-message").textContent = "Verifique a conexão e atualize a página antes de tentar novamente.";
+  } else document.querySelector("#auth-message").textContent = "O serviço de autenticação não carregou. Verifique a conexão e atualize a página.";
 } else { document.body.dataset.auth = "ready"; loadReport(); }
 window.addEventListener("online", () => {
   if (!cloudClient || !cloudUser) return;

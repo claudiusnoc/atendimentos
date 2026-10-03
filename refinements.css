@@ -245,6 +245,8 @@ body[data-auth="locked"] .app-shell { visibility: hidden; }
   background: #fff;
   box-shadow: 0 16px 48px rgba(25, 38, 45, .08);
 }
+.auth-card form { display: grid; gap: 10px; }
+.auth-card form[hidden] { display: none; }
 .auth-logo { width: 72px; height: 56px; margin-bottom: 2px; object-fit: contain; }
 .auth-eyebrow { margin: 0; color: #b32b35; font-size: 10px; font-weight: 750; letter-spacing: .12em; }
 .auth-card h1 { margin: 0; color: #1f2a30; font-size: 24px; letter-spacing: -.03em; }
@@ -256,8 +258,6 @@ body[data-auth="locked"] .app-shell { visibility: hidden; }
 .auth-submit { min-height: 44px; border: 0; border-radius: 8px; color: #fff; background: #b32b35; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .auth-submit:hover { background: #96232c; }
 .auth-submit:disabled { opacity: .55; cursor: wait; }
-.auth-switch { justify-self: center; min-height: 36px; padding: 4px 10px; border: 0; color: #4c5b63; background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
-.auth-switch:hover { color: #1769c2; }
 .signout-button { min-height: 32px; padding: 0 10px; border: 1px solid #d9e0e4; border-radius: 8px; color: #59666e; background: #fff; font: inherit; font-size: 11px; cursor: pointer; }
 .signout-button:hover { color: #a12832; border-color: #e8c5c8; }
 @media (max-width: 640px) {
