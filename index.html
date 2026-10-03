@@ -6,22 +6,31 @@
     <meta name="description" content="Relatório operacional de atendimentos massivos." />
     <title>Atendimentos | Relatório operacional</title>
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="refinements.css?v=auth-recovery-20261003-1" />
+    <link rel="stylesheet" href="refinements.css?v=compact-menus-20261003-5" />
     <link rel="stylesheet" href="sync.css?v=sync-20261002-1" />
-    <link rel="stylesheet" href="report-layout.css?v=metro-20261002-15" />
+    <link rel="stylesheet" href="report-layout.css?v=critical-levels-only-20261003-4" />
+    <link rel="stylesheet" href="weather-widget.css?v=rain-highlight-frame-20261003-14" />
   </head>
   <body>
     <section class="auth-screen" id="auth-screen" hidden aria-labelledby="auth-title">
       <div class="auth-card">
-        <img class="auth-logo" src="eqs_engenharia_logo.jpg" alt="" />
-        <p class="auth-eyebrow">RELATÓRIO OPERACIONAL</p>
-        <h1 id="auth-title">Acesse o relatório</h1>
-        <p class="auth-copy" id="auth-copy">Digite o código de acesso para consultar e editar os atendimentos.</p>
-        <form id="auth-form">
-          <label for="auth-code">Código de acesso</label>
-          <input id="auth-code" name="code" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{6}" minlength="6" maxlength="6" aria-describedby="auth-message" required />
+        <img class="auth-logo" src="eqs_engenharia_logo.jpg" alt="Símbolo da EQS Engenharia" />
+        <h1 id="auth-title" class="sr-only">Acesse o relatório</h1>
+        <p class="auth-copy sr-only" id="auth-copy">Digite o código de acesso para consultar e editar os atendimentos.</p>
+        <form id="auth-form" autocomplete="on">
+          <fieldset class="otp-fieldset" aria-describedby="auth-message">
+            <legend class="sr-only">Código de acesso — seis dígitos</legend>
+            <div class="otp-inputs">
+              <input id="auth-code-1" class="otp-digit" name="code-1" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" aria-label="Dígito 1 de 6" required />
+              <input class="otp-digit" name="code-2" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]*" maxlength="6" aria-label="Dígito 2 de 6" required />
+              <input class="otp-digit" name="code-3" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]*" maxlength="6" aria-label="Dígito 3 de 6" required />
+              <input class="otp-digit" name="code-4" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]*" maxlength="6" aria-label="Dígito 4 de 6" required />
+              <input class="otp-digit" name="code-5" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]*" maxlength="6" aria-label="Dígito 5 de 6" required />
+              <input class="otp-digit" name="code-6" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]*" maxlength="6" aria-label="Dígito 6 de 6" required />
+            </div>
+          </fieldset>
           <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
-          <button class="auth-submit" id="auth-submit" type="submit">Entrar</button>
+          <button class="sr-only" id="auth-submit" type="submit">Entrar</button>
         </form>
         <form id="password-recovery-form" hidden>
           <label for="new-access-code">Novo código de acesso</label>
@@ -42,47 +51,59 @@
         </div>
         <div class="shift-meta">
           <span class="shift-datetime"><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7.25"/><path d="M10 5.5V10l3 1.8"/></svg><time id="report-clock"></time></span>
-          <span class="supervisor-profile">
+          <button class="supervisor-profile" id="supervisor-trigger" type="button" aria-label="Selecionar supervisor operacional">
             <span class="supervisor-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20c.4-3.7 2.7-5.6 6.5-5.6s6.1 1.9 6.5 5.6"/></svg></span>
             <span class="supervisor-profile-copy"><span id="supervisor-name">Claudius Igor</span><span class="supervisor-role">Supervisor operacional</span></span>
             <svg class="profile-chevron" aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m5 7 5 5 5-5"/></svg>
-            <label class="sr-only" for="shift-supervisor">Selecionar supervisor operacional</label>
-            <select id="shift-supervisor" aria-label="Selecionar supervisor operacional"><option value="CLAUDIUS IGOR" data-display-name="Claudius Igor">Claudius Igor</option><option value="LEANDRO MENEZES" data-display-name="Leandro Menezes">Leandro Menezes</option></select>
-          </span>
+          </button>
+          <select id="shift-supervisor" data-menu-select data-menu-trigger="supervisor-trigger" data-menu-label="#supervisor-name" aria-label="Selecionar supervisor operacional"><option value="CLAUDIUS IGOR" data-display-name="Claudius Igor">Claudius Igor</option><option value="LEANDRO MENEZES" data-display-name="Leandro Menezes">Leandro Menezes</option></select>
           <details class="notifications popover-menu"><summary aria-label="Avisos do relatório" title="Avisos do relatório"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-dot" hidden></span></summary><div class="menu-panel notification-panel"><strong>Avisos do relatório</strong><p id="notification-critical">Carregando atendimentos…</p><p id="notification-sync">Conectando ao Supabase…</p></div></details>
           <button class="signout-button" id="signout-button" type="button" hidden>Sair</button>
         </div>
       </header>
       <section class="report-overview" aria-label="Resumo dos atendimentos">
-        <button class="summary-card critical-card" id="critical-card" type="button" aria-pressed="false" title="Filtrar prioridades de nível 0 a 4 ou falha INOPERANTE"><span class="summary-icon"><img class="critical-site-icon" src="site-critico-icon.png" alt="" aria-hidden="true" /></span><span class="summary-content"><span class="summary-label">Sites críticos</span><strong class="summary-number" id="critical-count">—</strong><span class="summary-footnote">Níveis 0–4 ou inoperantes</span></span><svg class="card-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-        <button class="summary-card transit-card" id="transit-card" type="button" aria-pressed="false"><span class="summary-icon"><img class="transit-vehicle-icon" src="em-deslocamento-icon.png" alt="" aria-hidden="true" /></span><span class="summary-content"><span class="summary-label">Em deslocamento</span><strong class="summary-number" id="transit-count">—</strong><span class="summary-measure"><span id="transit-percent">— do total</span><progress id="transit-progress" value="0" max="100" aria-label="Percentual em deslocamento"></progress></span></span><svg class="card-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-        <button class="summary-card gmg-card" id="gmg-card" type="button" aria-pressed="false"><span class="summary-icon"><img class="gmg-generator-icon" src="gmg-acoplado-icon-side.png?v=side-20261002-1" alt="" aria-hidden="true" /></span><span class="summary-content"><span class="summary-label">GMGs acoplados</span><strong class="summary-number" id="gmg-count">—</strong><span class="summary-measure"><span id="gmg-percent">— do total</span><progress id="gmg-progress" value="0" max="100" aria-label="Percentual de GMGs acoplados"></progress></span></span><svg class="card-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-        <div class="summary-card updated-card"><span class="summary-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg></span><div class="summary-content"><span class="summary-label">Última atualização</span><time id="last-cloud-update">Consultando…</time></div></div>
+        <button class="summary-card critical-card" id="critical-card" type="button" aria-pressed="false" title="Filtrar sites críticos"><span class="summary-icon"><img class="critical-site-icon" src="site-critico-icon.png" alt="" aria-hidden="true" /></span><span class="summary-content"><span class="summary-label">Sites críticos</span><strong class="summary-number" id="critical-count">—</strong><span class="summary-footnote critical-criteria" aria-label="Filtro de sites críticos: prioridades de nível zero a quatro ou falha inoperante"><span class="critical-priority-tag">Nível 0–4</span></span></span></span><svg class="card-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+        <button class="summary-card transit-card" id="transit-card" type="button" aria-pressed="false"><span class="summary-icon"><img class="transit-vehicle-icon" src="em-deslocamento-icon.png" alt="" aria-hidden="true" /></span><span class="summary-content"><span class="summary-label">Em deslocamento</span><strong class="summary-number" id="transit-count">—</strong><span class="summary-measure"><span id="transit-percent">—%</span><progress id="transit-progress" value="0" max="100" aria-label="Percentual em deslocamento"></progress></span></span><svg class="card-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+        <button class="summary-card gmg-card" id="gmg-card" type="button" aria-pressed="false"><span class="summary-icon"><img class="gmg-generator-icon" src="gmg-acoplado-icon-side.png?v=side-20261002-1" alt="" aria-hidden="true" /></span><span class="summary-content"><span class="summary-label">GMGs acoplados</span><strong class="summary-number" id="gmg-count">—</strong><span class="summary-measure"><span id="gmg-percent">—%</span><progress id="gmg-progress" value="0" max="100" aria-label="Percentual de GMGs acoplados"></progress></span></span><svg class="card-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+        <section class="summary-card updated-card weather-card" id="weather-widget" data-sync="pending" data-weather-state="loading" aria-label="Previsão de precipitação para a regional METRO" aria-busy="true">
+          <div class="weather-summary">
+            <span class="weather-current-compact">
+              <span class="weather-compact-place"><span>CHUVA · METRO</span><span class="weather-compact-city" id="weather-featured-city">Identificando cidade</span></span>
+              <span class="weather-icon" id="weather-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M9 23h14a5 5 0 0 0 .3-10A7.5 7.5 0 0 0 9 15a4 4 0 0 0 0 8Z"/><path d="M10 27h12"/></svg></span>
+              <strong class="weather-precipitation"><span id="weather-precipitation">—</span><span class="weather-precipitation-unit">mm</span></strong>
+            </span>
+            <div class="weather-city-column">
+              <div class="weather-city-preview" id="weather-municipality-preview" role="list" aria-label="Precipitação prevista nas demais cidades da regional METRO"><span class="weather-mini-loading" role="status">Consultando municípios…</span></div>
+              <span class="weather-credit">Dados <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open‑Meteo</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></span>
+            </div>
+          </div>
+        </section>
       </section>
       <section class="report-filters" aria-label="Filtros do relatório">
-        <label class="report-filter" for="filter-base"><span class="sr-only">Base técnica</span><span class="filter-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/></svg><select id="filter-base"><option value="">Todas as bases</option></select><svg class="chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg></span></label>
-        <label class="report-filter" for="filter-priority"><span class="sr-only">Prioridade</span><span class="filter-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 21V3m0 1c5-4 10 4 16 0v11c-6 4-11-4-16 0"/></svg><select id="filter-priority"><option value="">Todas as prioridades</option></select><svg class="chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg></span></label>
-        <label class="report-filter" for="filter-status"><span class="sr-only">Status</span><span class="filter-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 12h5l3-9 4 18 3-9h5"/></svg><select id="filter-status"><option value="">Todos os status</option></select><svg class="chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg></span></label>
+        <div class="report-filter"><span class="filter-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/></svg><select id="filter-base" data-menu-select aria-label="Filtrar por base técnica"><option value="">Todas as bases</option></select></span></div>
+        <div class="report-filter"><span class="filter-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 21V3m0 1c5-4 10 4 16 0v11c-6 4-11-4-16 0"/></svg><select id="filter-priority" data-menu-select aria-label="Filtrar por prioridade"><option value="">Todas as prioridades</option></select></span></div>
+        <div class="report-filter"><span class="filter-control"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 12h5l3-9 4 18 3-9h5"/></svg><select id="filter-status" data-menu-select aria-label="Filtrar por status"><option value="">Todos os status</option></select></span></div>
         <button type="button" id="clear-filters" class="clear-filters"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 4h18l-7 8v8l-4-2v-6L3 4Z"/></svg>Limpar filtros</button>
       </section>
       <section class="toolbar" aria-label="Estado do relatório">
         <span id="sort-summary" class="sort-summary" role="status"></span>
+        <time id="last-cloud-update" hidden></time>
         <p id="source-note" class="sync-state" role="status" aria-live="polite" data-sync="neutral">Carregando referências…</p>
         <button id="resolve-conflict" type="button" class="sync-action" hidden>Resolver conflito</button>
       </section>
       <section class="report" id="relatorio" aria-labelledby="report-title">
         <h1 id="report-title" class="sr-only">Relatório de atendimentos</h1>
-        <div class="table-wrap"><table id="attendance-table"><caption class="sr-only">Lista editável de atendimentos massivos</caption><thead><tr><th data-sort-key="site"><button class="sort-button" type="button" data-sort-key="site" aria-label="Classificar por estação" aria-pressed="false">ESTAÇÃO<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="priority"><button class="sort-button" type="button" data-sort-key="priority" aria-label="Classificar por prioridade" aria-pressed="false">PRIORIDADE<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="quantity"><button class="sort-button" type="button" data-sort-key="quantity" aria-label="Classificar por quantidade de instalações" aria-pressed="false">QUANTIDADE DE INSTALAÇÕES<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="technician"><button class="sort-button" type="button" data-sort-key="technician" aria-label="Classificar por técnico" aria-pressed="false">TÉCNICO<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="base"><button class="sort-button" type="button" data-sort-key="base" aria-label="Classificar por base técnica" aria-pressed="false">BASE TÉCNICA<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="failure"><button class="sort-button" type="button" data-sort-key="failure" aria-label="Classificar por falha" aria-pressed="false">FALHA<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="status"><button class="sort-button" type="button" data-sort-key="status" aria-label="Classificar por status" aria-pressed="false">STATUS<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th>OBSERVAÇÃO</th><th>TENSÃO</th><th><span class="sr-only">AÇÕES</span></th></tr></thead><tbody id="records"></tbody></table></div>
+        <div class="table-wrap"><table id="attendance-table"><caption class="sr-only">Lista editável de atendimentos massivos</caption><thead><tr><th data-sort-key="site"><button class="sort-button" type="button" data-sort-key="site" aria-label="Classificar por estação" aria-pressed="false">ESTAÇÃO<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="priority"><button class="sort-button" type="button" data-sort-key="priority" aria-label="Classificar por prioridade" aria-pressed="false">PRIORIDADE<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="quantity"><button class="sort-button" type="button" data-sort-key="quantity" aria-label="Classificar por estações que carrega" aria-pressed="false">ESTAÇÕES QUE CARREGA<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="technician"><button class="sort-button" type="button" data-sort-key="technician" aria-label="Classificar por técnico" aria-pressed="false">TÉCNICO<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="base"><button class="sort-button" type="button" data-sort-key="base" aria-label="Classificar por base técnica" aria-pressed="false">BASE TÉCNICA<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="failure"><button class="sort-button" type="button" data-sort-key="failure" aria-label="Classificar por falha" aria-pressed="false">FALHA<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th data-sort-key="status"><button class="sort-button" type="button" data-sort-key="status" aria-label="Classificar por status" aria-pressed="false">STATUS<span class="sort-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 7 4-4 4 4M6 13l4 4 4-4"></path></svg></span></button></th><th>OBSERVAÇÃO</th><th>TENSÃO</th><th><span class="sr-only">AÇÕES</span></th></tr></thead><tbody id="records"></tbody></table></div>
         <div class="report-actions"><button class="add-line-button" id="add-row-button" type="button" aria-label="Adicionar linha" title="Adicionar linha"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg></button></div>
       </section>
-      <datalist id="technician-options"></datalist><div class="site-popover hidden" id="site-popover" role="listbox" aria-label="Sugestões de instalações"></div>
     </main>
-    <template id="row-template"><tr><td data-label="Instalação"><input class="cell-input site-input" autocomplete="off" aria-label="Instalação" /></td><td data-label="Prioridade"><input class="cell-input priority-input" aria-label="Prioridade" /></td><td data-label="Qtd instalações"><input class="cell-input quantity-input" aria-label="Quantidade de instalações" /></td><td data-label="Técnico"><input class="cell-input technician-input" list="technician-options" autocomplete="off" aria-label="Técnico" /></td><td data-label="Base técnica"><input class="cell-input base-input" aria-label="Base técnica" /></td><td data-label="Falha"><select class="cell-input failure-input" aria-label="Falha"><option value=""></option></select></td><td data-label="Status"><select class="cell-input status-input" aria-label="Status"><option value=""></option></select></td><td data-label="Observação"><input class="cell-input notes-input" aria-label="Observação" /></td><td data-label="Tensão"><span class="voltage-field"><input class="cell-input voltage-input" inputmode="decimal" aria-label="Tensão" /><span class="voltage-unit" aria-hidden="true">V</span></span></td><td class="action-cell"><button class="remove-button" type="button" aria-label="Remover linha">Remover</button></td></tr></template>
+    <template id="row-template"><tr><td data-label="Instalação"><input class="cell-input site-input" autocomplete="off" aria-label="Instalação" /></td><td data-label="Prioridade"><input class="cell-input priority-input" aria-label="Prioridade" /></td><td data-label="Estações que carrega"><input class="cell-input quantity-input" aria-label="Estações que carrega" /></td><td data-label="Técnico"><input class="cell-input technician-input" autocomplete="off" aria-label="Técnico" /></td><td data-label="Base técnica"><input class="cell-input base-input" aria-label="Base técnica" /></td><td data-label="Falha"><select class="cell-input failure-input" aria-label="Falha"><option value=""></option></select></td><td data-label="Status"><select class="cell-input status-input" aria-label="Status"><option value=""></option></select></td><td data-label="Observação"><input class="cell-input notes-input" aria-label="Observação" /></td><td data-label="Tensão"><span class="voltage-field"><input class="cell-input voltage-input" inputmode="decimal" aria-label="Tensão" /><span class="voltage-unit" aria-hidden="true">V</span></span></td><td class="action-cell"><button class="remove-button" type="button" aria-label="Remover linha">Remover</button></td></tr></template>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <script src="table-layout.js?v=layout-20261002-1" defer></script>
-    <script src="cell-options.js" defer></script>
-    <script src="report-dashboard.js?v=metro-20261002-2" defer></script>
+    <script src="table-layout.js?v=quantity-label-20261003-8" defer></script>
+    <script src="cell-options.js?v=compact-menus-20261003-5" defer></script>
+    <script src="report-dashboard.js?v=organic-menus-20261003-2" defer></script>
+    <script src="weather-widget.js?v=weather-label-remove-20261003-13" defer></script>
     <dialog id="conflict-dialog" aria-labelledby="conflict-title">
       <h2 id="conflict-title">Alterações em dois dispositivos</h2>
       <p>Compare os valores antes de continuar. Nada será sobrescrito sem sua escolha.</p>
@@ -91,6 +112,6 @@
       <div class="conflict-actions"><button type="button" id="use-cloud">Usar versão da nuvem</button><button type="button" id="keep-local">Manter minha edição</button><button type="button" id="close-conflict">Decidir depois</button></div>
     </dialog>
     <script src="cloud-sync.js?v=sync-20261002-1" defer></script>
-    <script src="app.js?v=auth-recovery-20261003-3" defer></script>
+    <script src="app.js?v=quantity-label-20261003-8" defer></script>
   </body>
 </html>

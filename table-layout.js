@@ -6,7 +6,7 @@
   const columns = [
     { key: "site", label: "estação", width: 124, min: 104, icon: '<circle cx="12" cy="6" r="1.5"/><path d="m12 8-5 13m5-13 5 13M9 16h6M5 3a7 7 0 0 0 0 8M19 3a7 7 0 0 1 0 8"/>' },
     { key: "priority", label: "prioridade", width: 128, min: 112, icon: '<path d="m6 11 6-6 6 6M6 18l6-6 6 6"/>' },
-    { key: "quantity", label: "quantidade de instalações", width: 164, min: 128, icon: '<rect x="9" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M12 9v3M6 15v-3h12v3"/>' },
+    { key: "quantity", label: "estações que carrega", width: 164, min: 128, icon: '<rect x="9" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M12 9v3M6 15v-3h12v3"/>' },
     { key: "technician", label: "técnico", width: 144, min: 112, icon: '<path d="M5 10a7 7 0 0 1 14 0M12 3v4M3 10h18M8 12a4 4 0 0 0 8 0M5 21v-2c0-2 3-3 7-3s7 1 7 3v2"/>' },
     { key: "base", label: "base técnica", width: 108, min: 100, icon: '<path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/>' },
     { key: "failure", label: "falha", width: 218, min: 140, icon: '<path d="m10.3 4-8 14a2 2 0 0 0 1.7 3h16a2 2 0 0 0 1.7-3l-8-14a2 2 0 0 0-3.4 0ZM12 9v5m0 3v.1"/>' },
@@ -122,7 +122,7 @@
     handles.push(handle);
     header.append(handle);
   });
-  function hideSuggestions() { document.querySelector("#site-popover").classList.add("hidden"); }
+  function hideSuggestions() { window.cellOptions?.close(); }
   renderWidths();
   new ResizeObserver(() => { if (!drag) renderWidths(); }).observe(wrapper);
 })();

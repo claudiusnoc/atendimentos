@@ -11,8 +11,9 @@ const reportCacheKey = cloudClient ? "atendimentos.cloud.grid.v1" : storageKey;
 const body = document.querySelector("#records");
 const template = document.querySelector("#row-template");
 const note = document.querySelector("#source-note");
-const sitePopover = document.querySelector("#site-popover");
-let activeSiteInput = null;
+const siteSuggestions = new WeakMap();
+const siteSuggestionTimers = new WeakMap();
+const siteSuggestionRequests = new WeakMap();
 let records = [];
 let failureChoices = [];
 let statusChoices = [];
@@ -62,7 +63,7 @@ function acceptCloudRows(rows) {
     else displayed.set(id, { ...(displayed.get(id) || operation.base || {}), ...operation.patch, id });
   }
   const visible = [...displayed.values()].sort((a, b) => a.ordem - b.ordem);
-  hideSitePopover(); cellOptions.close(); body.replaceChildren();
+  cellOptions.close(); body.replaceChildren();
   addRows(visible.length ? visible.map(displayCloudRow) : [{}]);
   records = [...body.rows].map(read); rememberScreen(); applySearch();
   try { localStorage.setItem(cacheKey(), JSON.stringify(rows)); } catch { /* Network remains authoritative. */ }
@@ -228,7 +229,6 @@ function sortRows(key) {
     const result = typeof leftValue === "number" && typeof rightValue === "number" ? leftValue - rightValue : String(leftValue).localeCompare(String(rightValue), "pt-BR", { numeric: true, sensitivity: "base" });
     return sortState.direction * result;
   });
-  hideSitePopover();
   cellOptions.close();
   body.replaceChildren(...sorted);
   [...body.rows].forEach((row, index) => { row.dataset.order = index + 1; });
@@ -282,25 +282,33 @@ function deleteCloudRow(id) {
   observedRows.delete(id); persistDraft();
 }
 
-function hideSitePopover() { sitePopover.classList.add("hidden"); activeSiteInput = null; }
-function chooseSite(input, site) { input.value = site; input.dispatchEvent(new Event("change")); hideSitePopover(); }
-function showSitePopover(input, items) {
-  if (!input.value.trim() || !items.length) return hideSitePopover();
-  activeSiteInput = input;
-  sitePopover.replaceChildren(...items.map((site) => {
-    const option = Object.assign(document.createElement("button"), { className: "site-option", type: "button", textContent: site, role: "option" });
-    option.addEventListener("mousedown", (event) => { event.preventDefault(); chooseSite(input, site); });
-    return option;
-  }));
-  const box = input.getBoundingClientRect();
-  sitePopover.style.left = `${Math.min(box.left, window.innerWidth - 282)}px`;
-  sitePopover.style.top = `${box.bottom + 4}px`;
-  sitePopover.style.maxHeight = `${Math.max(96, Math.min(250, window.innerHeight - box.bottom - 12))}px`;
-  sitePopover.classList.remove("hidden");
-}
-async function suggestSites(input) {
-  if (!input.value.trim()) return hideSitePopover();
-  try { const sites = await request(`/api/sites?q=${encodeURIComponent(input.value)}`); if ((activeSiteInput === input || document.activeElement === input) && input.value.trim()) showSitePopover(input, sites.items); } catch { note.textContent = "Não foi possível consultar a Tipologia."; }
+function suggestSites(input) {
+  const query = normalizeSite(input.value);
+  const oldTimer = siteSuggestionTimers.get(input);
+  if (oldTimer) window.clearTimeout(oldTimer);
+  const requestId = (siteSuggestionRequests.get(input) || 0) + 1;
+  siteSuggestionRequests.set(input, requestId);
+  if (!query) {
+    siteSuggestions.set(input, []);
+    cellOptions.setEmptyMessage(input, "");
+    cellOptions.refresh(input);
+    return;
+  }
+  cellOptions.setEmptyMessage(input, "");
+  const timer = window.setTimeout(async () => {
+    try {
+      const result = await request(`/api/sites?q=${encodeURIComponent(query)}`);
+      if (siteSuggestionRequests.get(input) !== requestId || normalizeSite(input.value) !== query) return;
+      siteSuggestions.set(input, (result.items || []).map(site => ({ value: site, label: site })));
+      cellOptions.setEmptyMessage(input, "");
+      cellOptions.refresh(input);
+    } catch {
+      if (siteSuggestionRequests.get(input) !== requestId) return;
+      siteSuggestions.set(input, []);
+      cellOptions.setEmptyMessage(input, "Falha ao consultar a Tipologia. Confira a conexão e tente novamente.");
+    }
+  }, 180);
+  siteSuggestionTimers.set(input, timer);
 }
 function createRow(record = {}) {
   const fragment = template.content.cloneNode(true);
@@ -329,7 +337,11 @@ function createRow(record = {}) {
     input.value = key === "voltage" ? value.trim().replace(/\s*v$/i, "").replace(".", ",") : value;
     paint();
     if (key === 'notes') input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); input.blur(); } });
-    ["input", "change"].forEach((event) => input.addEventListener(event, () => { if (key === 'site') row.dataset.validSite = ''; paint(); sync(); }));
+    ["input", "change"].forEach((event) => input.addEventListener(event, () => {
+      if (key === 'site') row.dataset.validSite = '';
+      if (key === 'technician') rowFields.base.value = technicianBases[technicianToken(input.value)] || '';
+      paint(); sync();
+    }));
     if (key === "voltage") input.addEventListener("blur", () => {
       const numeric = input.value.trim().replace(/\s*v$/i, "");
       if (/^\d+(?:[.,]\d+)?$/.test(numeric)) input.value = numeric.replace(".", ",");
@@ -340,36 +352,61 @@ function createRow(record = {}) {
   cellOptions.attach(rowFields.technician, () => technicianChoices, { freeText: true });
   cellOptions.attach(rowFields.failure, () => failureChoices);
   cellOptions.attach(rowFields.status, () => statusChoices, { kind: "status" });
-  rowFields.technician.addEventListener("change", () => { const base = technicianBases[technicianToken(rowFields.technician.value)]; if (base) rowFields.base.value = base; sync(); });
-  rowFields.site.addEventListener("focus", hideSitePopover);
-  rowFields.site.addEventListener("input", async () => {
+  let siteLookupSequence = 0;
+  siteSuggestions.set(rowFields.site, []);
+  cellOptions.attach(rowFields.site, () => siteSuggestions.get(rowFields.site) || [], {
+    freeText: true,
+    openOnClick: false,
+    enterSelectFirst: true,
+    onInput: () => suggestSites(rowFields.site)
+  });
+  rowFields.site.addEventListener("input", () => {
     rowFields.site.value = normalizeSite(rowFields.site.value);
     row.dataset.validSite = "";
-    if (!rowFields.site.value.trim()) return hideSitePopover();
-    activeSiteInput = rowFields.site;
-    suggestSites(rowFields.site);
-  });
-  rowFields.site.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    const firstSuggestion = sitePopover.querySelector(".site-option");
-    if (firstSuggestion && !sitePopover.classList.contains("hidden")) return chooseSite(rowFields.site, firstSuggestion.textContent);
-    rowFields.site.dispatchEvent(new Event("change"));
+    siteLookupSequence++;
+    if (normalizeSite(rowFields.site.value) !== row.dataset.resolvedSite) {
+      rowFields.priority.value = "";
+      rowFields.quantity.value = "";
+      paintPriority(rowFields.priority);
+    }
+    if (!rowFields.site.value.trim()) {
+      row.dataset.resolvedSite = "";
+      siteSuggestions.set(rowFields.site, []);
+    }
   });
   rowFields.site.addEventListener("change", async () => {
     const code = normalizeSite(rowFields.site.value);
+    const lookupSequence = ++siteLookupSequence;
     rowFields.site.value = code;
-    hideSitePopover();
-    if (!code) { hideSitePopover(); return sync(); }
+    siteSuggestions.set(rowFields.site, []);
+    cellOptions.close();
+    if (!code) {
+      row.dataset.validSite = "";
+      row.dataset.resolvedSite = "";
+      rowFields.priority.value = "";
+      rowFields.quantity.value = "";
+      paintPriority(rowFields.priority);
+      sync();
+      return;
+    }
+    if (code !== row.dataset.resolvedSite) {
+      rowFields.priority.value = "";
+      rowFields.quantity.value = "";
+      paintPriority(rowFields.priority);
+    }
     try {
       const site = await request(`/api/sites/${encodeURIComponent(code)}`);
+      if (lookupSequence !== siteLookupSequence || normalizeSite(rowFields.site.value) !== code || !row.isConnected) return;
       row.dataset.validSite = "true";
+      row.dataset.resolvedSite = code;
       rowFields.priority.value = site.priority || "";
       paintPriority(rowFields.priority);
       rowFields.quantity.value = site.quantity || "";
       note.textContent = `${code}: referências da Tipologia aplicadas à linha.`;
     } catch {
+      if (lookupSequence !== siteLookupSequence || normalizeSite(rowFields.site.value) !== code || !row.isConnected) return;
       row.dataset.validSite = "";
+      row.dataset.resolvedSite = "";
       rowFields.priority.value = "";
       rowFields.quantity.value = "";
       paintPriority(rowFields.priority);
@@ -387,7 +424,7 @@ function addRows(items) { items.forEach(createRow); updateCount(); }
 function exportCsv() {
   const lines = [...body.rows].map(read).filter((row) => Object.values(row).some(Boolean));
   if (!lines.length) { note.textContent = "Inclua ao menos uma instalação antes de exportar."; return; }
-  const headers = ["ESTAÇÃO", "PRIORIDADE", "QTD ESTAÇÕES", "TÉCNICO", "BASE TÉCNICA", "FALHA", "STATUS", "OBSERVAÇÃO", "TENSÃO"];
+  const headers = ["ESTAÇÃO", "PRIORIDADE", "ESTAÇÕES QUE CARREGA", "TÉCNICO", "BASE TÉCNICA", "FALHA", "STATUS", "OBSERVAÇÃO", "TENSÃO"];
   const quote = (value) => `"${String(value || "").replaceAll('"', '""')}"`;
   const reportVoltage = (value) => {
     const text = String(value || "").trim().replace(/\s*v$/i, "");
@@ -422,8 +459,6 @@ document.querySelector("#export-button").addEventListener("click", exportCsv);
 document.querySelector("#search").addEventListener("input", applySearch);
 document.querySelectorAll(".sort-button").forEach((button) => button.addEventListener("click", () => sortRows(button.dataset.sortKey)));
 updateSortIndicators();
-document.addEventListener("mousedown", (event) => { if (!sitePopover.contains(event.target) && event.target !== activeSiteInput) hideSitePopover(); });
-
 async function loadReport() {
   if (cloudLoaded) return;
   cloudLoaded = true;
@@ -505,7 +540,7 @@ async function refreshCloudRows({ onResume = false } = {}) {
 function configureAuthentication() {
   const screen = document.querySelector("#auth-screen");
   const form = document.querySelector("#auth-form");
-  const codeInput = document.querySelector("#auth-code");
+  const codeInputs = [...form.querySelectorAll(".otp-digit")];
   const message = document.querySelector("#auth-message");
   const submit = document.querySelector("#auth-submit");
   const recoveryForm = document.querySelector("#password-recovery-form");
@@ -553,33 +588,78 @@ function configureAuthentication() {
       if (input.value !== digits) input.value = digits;
     });
   };
-  digitsOnly(codeInput);
+  const accessCode = () => codeInputs.map((input) => input.value).join("");
+  const accessCodeComplete = () => codeInputs.every((input) => /^\d$/.test(input.value));
+  const setAccessCodeDisabled = (disabled) => codeInputs.forEach((input) => { input.disabled = disabled; });
+  const clearAccessCode = () => codeInputs.forEach((input) => { input.value = ""; });
+  const distributeAccessCode = (startIndex, value) => {
+    const digits = String(value).replace(/\D/g, "").slice(0, codeInputs.length - startIndex);
+    if (!digits) return;
+    message.textContent = "";
+    digits.split("").forEach((digit, offset) => { codeInputs[startIndex + offset].value = digit; });
+    const nextIndex = startIndex + digits.length;
+    if (accessCodeComplete()) {
+      codeInputs[codeInputs.length - 1].focus();
+      form.requestSubmit();
+    } else codeInputs[Math.min(nextIndex, codeInputs.length - 1)].focus();
+  };
+  codeInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      const digits = input.value.replace(/\D/g, "");
+      if (digits.length > 1) {
+        distributeAccessCode(index, digits);
+        return;
+      }
+      input.value = digits.slice(-1);
+      message.textContent = "";
+      if (input.value && index < codeInputs.length - 1) codeInputs[index + 1].focus();
+      if (accessCodeComplete()) form.requestSubmit();
+    });
+    input.addEventListener("paste", (event) => {
+      const pasted = event.clipboardData?.getData("text") || "";
+      if (!pasted) return;
+      event.preventDefault();
+      distributeAccessCode(index, pasted);
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Backspace" && !input.value && index > 0) {
+        codeInputs[index - 1].value = "";
+        codeInputs[index - 1].focus();
+      } else if (event.key === "ArrowLeft" && index > 0) codeInputs[index - 1].focus();
+      else if (event.key === "ArrowRight" && index < codeInputs.length - 1) codeInputs[index + 1].focus();
+    });
+  });
   digitsOnly(newCodeInput);
   digitsOnly(confirmCodeInput);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     submit.disabled = true;
     message.textContent = "Validando acesso…";
-    const code = codeInput.value;
+    const code = accessCode();
     if (!/^\d{6}$/.test(code)) {
       submit.disabled = false;
       message.textContent = "Digite os seis números do código de acesso.";
-      codeInput.focus();
+      codeInputs.find((input) => !input.value)?.focus();
       return;
     }
+    setAccessCodeDisabled(true);
     let result;
     try {
       result = await cloudClient.auth.signInWithPassword({ email: "claudius.rangel@eqsengenharia.com.br", password: code });
     } catch (error) {
       submit.disabled = false;
+      setAccessCodeDisabled(false);
       message.textContent = error.message || "Não foi possível conectar ao serviço de autenticação.";
       return;
     }
     submit.disabled = false;
+    setAccessCodeDisabled(false);
     if (result.error) {
       message.textContent = /invalid login credentials/i.test(result.error.message || "")
         ? "Código inválido. Confira os seis números e tente novamente."
         : result.error.message;
+      clearAccessCode();
+      codeInputs[0].focus();
       return;
     }
     cloudUser = result.data.user || result.data.session?.user || null;
@@ -734,7 +814,7 @@ document.querySelector('#retry-sync').addEventListener('click', async () => {
 document.querySelector('#resolve-conflict').addEventListener('click', () => {
   const operation = pendingChanges.get(syncConflict?.id);
   if (!operation) return;
-  const labels = { site: 'Estação', priority: 'Prioridade', quantity: 'Quantidade', technician: 'Técnico', base: 'Base', failure: 'Falha', status: 'Status', notes: 'Observação', voltage: 'Tensão', ordem: 'Ordem' };
+  const labels = { site: 'Estação', priority: 'Prioridade', quantity: 'Estações que carrega', technician: 'Técnico', base: 'Base', failure: 'Falha', status: 'Status', notes: 'Observação', voltage: 'Tensão', ordem: 'Ordem' };
   const list = document.querySelector('#conflict-values'); list.replaceChildren();
   for (const key of Object.keys(operation.patch)) {
     const item = document.createElement('li');

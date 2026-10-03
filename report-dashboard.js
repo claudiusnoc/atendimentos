@@ -38,7 +38,7 @@
     for (const [name,count] of [['transit',transit],['gmg',gmg]]) {
       const percent = total ? Math.round(count/total*100) : 0;
       $(name+'-count').textContent = count;
-      $(name+'-percent').textContent = `${percent}% do total`;
+      $(name+'-percent').textContent = `${percent}%`;
       $(name+'-progress').value = percent;
     }
     $('notification-critical').textContent = `${criticalCount} ${criticalCount===1?'site crítico':'sites críticos'}: prioridade de nível 0 a 4 ou falha INOPERANTE.`;
@@ -75,11 +75,22 @@
     $(id).addEventListener('click',()=>{
       const field=$('filter-status');
       if (![...field.options].some(option=>option.value===status)) field.add(new Option(status,status));
-      field.value=field.value===status?'':status;refresh();
+      field.value=field.value===status?'':status;
+      window.cellOptions?.sync(field);
+      field.dispatchEvent(new Event('change', { bubbles: true }));
     });
   }
   Object.keys(filterFields).forEach(id=>$(id).addEventListener('change',refresh));
-  function clear() { criticalOnly=false; Object.keys(filterFields).forEach(id=>$(id).value=''); $('search').value='';refresh(); }
+  function clear() {
+    criticalOnly=false;
+    Object.keys(filterFields).forEach(id=>{
+      const field=$(id);
+      field.value='';
+      window.cellOptions?.sync(field);
+    });
+    $('search').value='';
+    refresh();
+  }
   $('clear-filters').addEventListener('click',clear);
   const empty=document.createElement('div');empty.id='empty-results';empty.className='empty-results';empty.hidden=true;
   const copy=document.createElement('p');copy.textContent='Nenhum atendimento corresponde à busca e aos filtros.';
