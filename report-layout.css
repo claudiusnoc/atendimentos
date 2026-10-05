@@ -131,7 +131,7 @@ button.summary-card[aria-pressed="true"] { outline: 2px solid var(--report-blue)
 #attendance-table tbody tr:hover td,
 #attendance-table tbody tr:nth-child(even):hover td { background: #edf3fb; }
 #attendance-table .cell-input { height: 26px; padding: 3px 5px; font-size: 10.5px; line-height: 18px; border-radius: 4px; color: #4b5e7a; text-overflow: clip; }
-/* Firmer ink improves scanning on the white grid without changing semantic badge colors. */
+/* Operational values need a firmer ink on the white grid; semantic priority and status colors stay untouched. */
 #attendance-table .quantity-input,
 #attendance-table .technician-input,
 #attendance-table .base-input,
@@ -210,22 +210,32 @@ button:focus-visible, summary:focus-visible, select:focus-visible, a:focus-visib
   .report-search kbd { display: none; }
 }
 @media (max-width: 640px) {
-  .app-shell { padding: 0 12px 24px; }
-  .topbar { height: auto; min-height: 52px; padding: 10px; gap: 10px; flex-wrap: wrap; }
+  .app-shell { display: flex; flex-direction: column; gap: 0; padding: 0 12px 24px; }
+  .topbar { order: 0; }
+  .report-filters { order: 1; }
+  .toolbar { order: 2; }
+  .report { order: 3; }
+  .report-overview { order: 4; }
+  .topbar { height: auto; min-height: 52px; padding: 10px; gap: 8px; flex-wrap: wrap; }
   .brand-name { border: 0; padding: 0; font-size: 16px; }
   .brand-report-title { font-size: 9px; letter-spacing: .035em; }
   .brand-report-separator { font-size: 14px; }
   .brand-logo { width: 32px; height: 28px; flex-basis: 32px; }
-  .shift-meta { order: 2; width: 100%; flex-wrap: wrap; gap: 10px; justify-content: space-between; }
-  .shift-datetime { order: 4; width: 100%; justify-content: center; padding: 8px 0 0; border-right: 0; border-top: 1px solid #edf1f6; }
+  .shift-meta { order: 2; width: 100%; flex-wrap: nowrap; gap: 7px; justify-content: space-between; }
+  .shift-datetime { order: 0; width: auto; justify-content: flex-start; padding: 0; border: 0; font-size: 10px; }
   .supervisor-profile-copy > span:first-child { font-size: 12px; }
   .supervisor-role { font-size: 10px; }
-  .notifications { margin-left: auto; padding: 0 10px; }
+  .notifications { margin-left: 0; padding: 0 8px; }
   .notification-panel { right: -65px; width: min(280px,calc(100vw - 40px)); }
-  .topbar-tools { order: 1; flex-direction: row; align-items: center; gap: 8px; }
+  .topbar-tools { order: 1; display: flex; flex-direction: row; align-items: center; gap: 7px; }
   .report-search { flex: 1 1 0; width: auto; min-width: 0; height: 42px; }
   .report-search kbd { display: none; }
-  .report-heading-actions { justify-content: flex-end; }
+  .report-heading-actions { flex: 0 0 auto; justify-content: flex-end; gap: 6px; }
+  .report-heading-actions .export-menu > summary { width: 42px; min-width: 42px; height: 42px; padding: 0; font-size: 0; gap: 0; }
+  .report-heading-actions .export-menu > summary svg:first-child { width: 18px; height: 18px; }
+  .report-heading-actions .export-menu > summary .chevron { width: 10px; height: 10px; margin-left: -3px; }
+  .report-heading-actions > #retry-sync { width: 42px; min-width: 42px; height: 42px; padding: 0; font-size: 0; gap: 0; }
+  .report-heading-actions > #retry-sync svg { width: 18px; height: 18px; }
   .report-button { min-height: 42px; font-size: 12px; }
   .report-overview { gap: 10px; margin: 16px 4px 14px; }
   .summary-card { height: 135px; padding: 12px; gap: 8px; align-items: flex-start; }
@@ -244,19 +254,48 @@ button:focus-visible, summary:focus-visible, select:focus-visible, a:focus-visib
   .critical-criteria { gap: 3px 4px; font-size: 9px; }
   .critical-priority-tag { font-size: 9px; }
   .card-chevron { display: none; }
-  .report-filters { padding: 7px; gap: 7px; margin-bottom: 12px; }
+  .report-filters { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: 100%; max-width: none; padding: 7px; gap: 5px; margin: 0 0 10px; }
+  .report-filter, .filter-control { width: 100%; }
+  #filter-base, #filter-priority, #filter-status,
+  #filter-base-trigger, #filter-priority-trigger, #filter-status-trigger { width: 100%; }
+  .filter-control .menu-select-trigger { padding-right: 23px; padding-left: 29px; }
+  .clear-filters { grid-column: 1 / -1; min-height: 36px; justify-self: start; }
   .filter-control { height: 40px; }
-  .clear-filters { min-height: 44px; border: 0; margin: 0; padding: 0 8px; justify-self: start; font-size: 12px; }
-  .table-wrap { margin: 0; border: 1px solid #d7e1ed; border-radius: 8px; }
-  #attendance-table .cell-input { font-size: 12px; min-height: 32px; }
-  #attendance-table .status-input { font-size: 10px; }
-  #attendance-table .notes-input { font-size: 11px; }
-  #attendance-table td { padding-top: 6px; padding-bottom: 6px; }
-  .toolbar { margin: 0 4px 14px; }
+  .clear-filters { border: 0; margin: 0; padding: 0 8px; font-size: 12px; }
+  .table-wrap { overflow-x: auto; overflow-y: hidden; margin: 0; border: 1px solid #d7e1ed; border-radius: 8px; background: #fff; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  #attendance-table { width: max-content !important; min-width: 1066px; border-collapse: separate; border-spacing: 0; }
+  #attendance-table thead th { height: 48px; padding: 8px 10px; font-size: 10px; }
+  #attendance-table td,
+  #attendance-table tbody tr:nth-child(even) td,
+  #attendance-table tbody tr:hover td,
+  #attendance-table tbody tr:nth-child(even):hover td { height: 50px; padding: 6px 8px; }
+  #attendance-table .cell-input { height: 38px; min-height: 38px; padding: 5px 7px; font-size: 13px; line-height: 1.25; text-overflow: ellipsis; }
+  #attendance-table .site-input { font-size: 13px; font-weight: 750; }
+  #attendance-table .priority-input { min-height: 36px; font-size: 12px; font-weight: 750; }
+  #attendance-table .status-input,
+  #attendance-table .failure-input { min-height: 40px; font-size: 12px; }
+  #attendance-table .notes-input { font-size: 13px; }
+  #attendance-table .voltage-field { min-height: 38px; }
+  #attendance-table .voltage-input { min-height: 36px; font-size: 13px; }
+  #attendance-table .voltage-unit { margin-right: 8px; font-size: 12px; }
+  #attendance-table th:first-child,
+  #attendance-table td:first-child { position: sticky; left: 0; z-index: 3; background: #fff; box-shadow: 1px 0 0 #dfe7f0; }
+  #attendance-table thead th:first-child { z-index: 4; background: #eaf0f7; }
+  #attendance-table tbody tr:nth-child(even) td:first-child { background: #f6f9fd; }
+  #attendance-table tbody tr:hover td:first-child,
+  #attendance-table tbody tr:nth-child(even):hover td:first-child { background: #edf3fb; }
+  #attendance-table .action-cell { width: 40px; padding: 4px; }
+  #attendance-table .remove-button { width: 34px; height: 38px; opacity: 1; pointer-events: auto; }
+  .report-actions { padding: 7px 2px 0; }
+  .add-line-button { width: 40px; height: 40px; min-height: 40px; }
+  .toolbar { margin: 0 4px 10px; }
 }
 @media (max-width: 400px) {
-  .topbar-tools { flex-direction: column; align-items: stretch; }
-  .report-search { flex: none; width: 100%; }
+  .topbar-tools { flex-direction: row; align-items: center; }
+  .report-search { flex: 1 1 0; width: auto; }
+  .report-search input { font-size: 11px; }
+  .shift-meta { gap: 6px; }
+  .shift-datetime { font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { button.summary-card, .report-button { transition: none; } }
 @media print {
