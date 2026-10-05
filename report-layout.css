@@ -127,8 +127,17 @@ button.summary-card[aria-pressed="true"] { outline: 2px solid var(--report-blue)
 .sort-button { padding: 0 4px; }
 #attendance-table th[aria-sort="ascending"], #attendance-table th[aria-sort="descending"] { background: #dfeafa; }
 #attendance-table td { height: 37px; padding: 5px 6px; border-color: #e6ebf3; background: #fff; }
-#attendance-table tr:hover td { background: #f7f9fd; }
+#attendance-table tbody tr:nth-child(even) td { background: #f6f9fd; }
+#attendance-table tbody tr:hover td,
+#attendance-table tbody tr:nth-child(even):hover td { background: #edf3fb; }
 #attendance-table .cell-input { height: 26px; padding: 3px 5px; font-size: 10.5px; line-height: 18px; border-radius: 4px; color: #4b5e7a; text-overflow: clip; }
+/* Firmer ink improves scanning on the white grid without changing semantic badge colors. */
+#attendance-table .quantity-input,
+#attendance-table .technician-input,
+#attendance-table .base-input,
+#attendance-table .failure-input,
+#attendance-table .notes-input { color: #26364f; font-weight: 600; }
+#attendance-table .notes-input { font-weight: 500; }
 #attendance-table .site-input { color: #202c46; font-weight: 750; }
 #attendance-table .priority-input { font-size: 11px; font-weight: 750; }
 #attendance-table .priority-input:not([data-priority="nivel-5"]):not([data-priority=""]) { color: #fff; }
@@ -170,7 +179,7 @@ button.summary-card[aria-pressed="true"] { outline: 2px solid var(--report-blue)
 #attendance-table .status-input[data-status]:not([data-status=""]):focus { filter: brightness(1.04); }
 #attendance-table textarea.cell-input { display: block; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 26px; font-family: inherit; }
 #attendance-table .notes-input { font-size: 10.5px; text-align: left; }
-#attendance-table .failure-input[data-failure="inoperante"] { color: #4b535a; }
+#attendance-table .failure-input[data-failure="inoperante"] { color: #414b56; font-weight: 700; }
 #attendance-table .action-cell { width: 28px; padding: 0; }
 #attendance-table .remove-button { width: 25px; height: 30px; }
 .report-actions { justify-content: flex-start; align-items: center; gap: 12px; padding: 8px 4px 0; }
