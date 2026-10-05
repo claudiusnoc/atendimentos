@@ -2,7 +2,7 @@
 (() => {
   const records = document.getElementById('records');
   const wrapper = document.querySelector('.table-wrap');
-  const mobile = matchMedia('(max-width: 767px)');
+  const mobile = matchMedia('(max-width: 767px), (max-width: 1023px) and (pointer: coarse)');
   if (!records || !wrapper) return;
   const tools = document.querySelector('.topbar-tools');
   const actions = document.querySelector('.report-heading-actions');
@@ -23,6 +23,10 @@
   const initials = document.createElement('span');
   initials.className = 'mobile-only mobile-supervisor-initials'; initials.setAttribute('aria-hidden','true');
   document.querySelector('.supervisor-avatar').append(initials);
+  document.querySelectorAll('.summary-label').forEach(label => {
+    label.dataset.mobileLabel = label.closest('.critical-card') ? 'Críticos'
+      : label.closest('.transit-card') ? 'Deslocamento' : 'GMGs';
+  });
   const heading = document.createElement('div'); heading.className = 'mobile-only mobile-list-heading';
   const count = document.createElement('strong'); count.setAttribute('role','status');
   const hint = document.createElement('span'); hint.className = 'mobile-scroll-hint';

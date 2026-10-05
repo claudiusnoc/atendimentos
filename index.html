@@ -9,8 +9,8 @@
     <link rel="stylesheet" href="refinements.css?v=compact-menus-20261003-5" />
     <link rel="stylesheet" href="sync.css?v=sync-20261002-1" />
     <link rel="stylesheet" href="report-layout.css?v=mobile-ledger-20261005-1" />
-    <link rel="stylesheet" href="weather-widget.css?v=rain-highlight-frame-20261003-14" />
-    <link rel="stylesheet" href="mobile-report.css?v=mobile-table-20261005-2" />
+    <link rel="stylesheet" href="weather-widget.css?v=current-rain-20261005-3" />
+    <link rel="stylesheet" href="mobile-report.css?v=mobile-chrome-20261005-3" />
   </head>
   <body>
     <section class="auth-screen" id="auth-screen" hidden aria-labelledby="auth-title">
@@ -66,16 +66,16 @@
         <button class="summary-card critical-card" id="critical-card" type="button" aria-pressed="false" title="Filtrar sites críticos"><span class="summary-icon"><img class="critical-site-icon" src="site-critico-icon.png" alt="" aria-hidden="true" /></span><span class="summary-content"><span class="summary-label">Sites críticos</span><strong class="summary-number" id="critical-count">—</strong><span class="summary-footnote critical-criteria" aria-label="Filtro de sites críticos: prioridades de nível zero a quatro ou falha inoperante"><span class="critical-priority-tag">Nível 0–4</span></span></span></span><svg class="card-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
         <button class="summary-card transit-card" id="transit-card" type="button" aria-pressed="false"><span class="summary-icon"><img class="transit-vehicle-icon" src="em-deslocamento-icon.png" alt="" aria-hidden="true" /></span><span class="summary-content"><span class="summary-label">Em deslocamento</span><strong class="summary-number" id="transit-count">—</strong><span class="summary-measure"><span id="transit-percent">—%</span><progress id="transit-progress" value="0" max="100" aria-label="Percentual em deslocamento"></progress></span></span><svg class="card-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
         <button class="summary-card gmg-card" id="gmg-card" type="button" aria-pressed="false"><span class="summary-icon"><img class="gmg-generator-icon" src="gmg-acoplado-icon-side.png?v=side-20261002-1" alt="" aria-hidden="true" /></span><span class="summary-content"><span class="summary-label">GMGs acoplados</span><strong class="summary-number" id="gmg-count">—</strong><span class="summary-measure"><span id="gmg-percent">—%</span><progress id="gmg-progress" value="0" max="100" aria-label="Percentual de GMGs acoplados"></progress></span></span><svg class="card-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
-        <section class="summary-card updated-card weather-card" id="weather-widget" data-sync="pending" data-weather-state="loading" aria-label="Previsão de precipitação para a regional METRO" aria-busy="true">
+        <section class="summary-card updated-card weather-card" id="weather-widget" data-sync="pending" data-weather-state="loading" aria-label="Chuva atual estimada na regional METRO" aria-busy="true">
           <div class="weather-summary">
             <span class="weather-current-compact">
-              <span class="weather-compact-place"><span>CHUVA · METRO</span><span class="weather-compact-city" id="weather-featured-city">Identificando cidade</span></span>
+              <span class="weather-compact-place"><span>CHUVA AGORA</span><span class="weather-compact-city" id="weather-featured-city">Identificando cidade</span></span>
               <span class="weather-icon" id="weather-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M9 23h14a5 5 0 0 0 .3-10A7.5 7.5 0 0 0 9 15a4 4 0 0 0 0 8Z"/><path d="M10 27h12"/></svg></span>
               <strong class="weather-precipitation"><span id="weather-precipitation">—</span><span class="weather-precipitation-unit">mm</span></strong>
             </span>
             <div class="weather-city-column">
-              <div class="weather-city-preview" id="weather-municipality-preview" role="list" aria-label="Precipitação prevista nas demais cidades da regional METRO"><span class="weather-mini-loading" role="status">Consultando municípios…</span></div>
-              <span class="weather-credit">Dados <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open‑Meteo</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></span>
+              <div class="weather-city-preview" id="weather-municipality-preview" role="list" aria-label="Chuva atual estimada nas demais cidades da regional METRO"><span class="weather-mini-loading" role="status">Consultando municípios…</span></div>
+              <span class="weather-credit"><span id="weather-data-status">Consultando dados atuais</span> · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open‑Meteo</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></span>
             </div>
           </div>
         </section>
@@ -104,7 +104,8 @@
     <script src="table-layout.js?v=quantity-label-20261003-8" defer></script>
     <script src="cell-options.js?v=compact-menus-20261003-5" defer></script>
     <script src="report-dashboard.js?v=organic-menus-20261003-2" defer></script>
-    <script src="weather-widget.js?v=weather-label-remove-20261003-13" defer></script>
+    <script src="weather-data.js?v=current-rain-20261005-3" defer></script>
+    <script src="weather-widget.js?v=current-rain-20261005-3" defer></script>
     <dialog id="conflict-dialog" aria-labelledby="conflict-title">
       <h2 id="conflict-title">Alterações em dois dispositivos</h2>
       <p>Compare os valores antes de continuar. Nada será sobrescrito sem sua escolha.</p>
@@ -114,6 +115,6 @@
     </dialog>
     <script src="cloud-sync.js?v=sync-20261002-1" defer></script>
     <script src="app.js?v=quantity-label-20261003-8" defer></script>
-    <script src="mobile-report.js?v=mobile-table-20261005-2" defer></script>
+    <script src="mobile-report.js?v=mobile-chrome-20261005-3" defer></script>
   </body>
 </html>

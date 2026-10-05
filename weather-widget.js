@@ -1,17 +1,18 @@
-/* Precipitation accumulation outlook for METRO municipalities. Read-only Open-Meteo data. */
+/* Current precipitation estimates for METRO. Never sum future forecasts into current rain. */
 (() => {
   const root = document.getElementById('weather-widget');
   if (!root) return;
 
   const $ = id => document.getElementById(id);
-  const storageKey = 'metro-weather-open-meteo-v3';
-  const locationsStorageKey = 'metro-weather-geocoding-v1';
-  const cacheTtl = 20 * 60 * 1000;
-  const staleLimit = 6 * 60 * 60 * 1000;
-  const refreshEvery = 30 * 60 * 1000;
-  const anchorCity = { name: 'Belo Horizonte', latitude: -19.92083, longitude: -43.93778 };
+  const weatherData = window.MetroWeatherData;
+  if (!weatherData) return;
+  const storageKey = 'metro-weather-current-v4';
+  const cacheTtl = 5 * 60 * 1000;
+  const staleLimit = 10 * 60 * 1000;
+  const refreshEvery = 5 * 60 * 1000;
+  const anchorCity = weatherData.locations[0];
   const municipalityNames = ['Conselheiro Lafaiete', 'Mariana', 'Divinópolis', 'João Monlevade', 'Ponte Nova'];
-  let resolvedLocations = null;
+  let resolvedLocations = weatherData.locations;
   let lastLoadedAt = 0;
   let inFlight = null;
   let featuredCityName = null;
@@ -63,7 +64,6 @@
   const number = (value, digits = 0) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
     ? new Intl.NumberFormat('pt-BR', { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(Number(value))
     : '—';
-  const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g, ' ').trim();
 
   function readJson(key) {
     try { return JSON.parse(localStorage.getItem(key) || 'null'); }
@@ -78,64 +78,22 @@
   }
 
   function validLocations(locations) {
-    return Array.isArray(locations) && locations.length === municipalityNames.length + 1
-      && locations[0]?.name === anchorCity.name
-      && municipalityNames.every((name, index) => locations[index + 1]?.name === name
-        && Number.isFinite(Number(locations[index + 1]?.latitude))
-        && Number.isFinite(Number(locations[index + 1]?.longitude)));
+    return Array.isArray(locations) && locations.length === weatherData.locations.length
+      && weatherData.locations.every((city, index) => locations[index]?.name === city.name
+        && Number(locations[index]?.latitude) === city.latitude
+        && Number(locations[index]?.longitude) === city.longitude);
   }
 
-  async function resolveLocations() {
-    if (resolvedLocations) return resolvedLocations;
-    const stored = readJson(locationsStorageKey);
-    if (validLocations(stored)) {
-      resolvedLocations = [anchorCity, ...stored.slice(1).map(city => ({ ...city, latitude: Number(city.latitude), longitude: Number(city.longitude) }))];
-      return resolvedLocations;
-    }
-
-    const municipalities = await Promise.all(municipalityNames.map(async name => {
-      const params = new URLSearchParams({ name: `${name}, Minas Gerais`, count: '10', language: 'pt', countryCode: 'BR', format: 'json' });
-      const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`, { method: 'GET', mode: 'cors', credentials: 'omit' });
-      if (!response.ok) throw new Error(`Não foi possível localizar ${name} no geocodificador.`);
-      const payload = await response.json();
-      const candidates = Array.isArray(payload.results) ? payload.results : [];
-      const city = candidates.find(result => result.country_code === 'BR'
-        && normalize(result.admin1) === normalize('Minas Gerais')
-        && normalize(result.name) === normalize(name));
-      if (!city || !Number.isFinite(Number(city.latitude)) || !Number.isFinite(Number(city.longitude))) {
-        throw new Error(`O geocodificador não encontrou ${name}, Minas Gerais.`);
-      }
-      return { name, latitude: Number(city.latitude), longitude: Number(city.longitude) };
-    }));
-
-    resolvedLocations = [anchorCity, ...municipalities];
-    try { localStorage.setItem(locationsStorageKey, JSON.stringify(resolvedLocations)); } catch { /* locations remain cached in memory */ }
-    return resolvedLocations;
-  }
-
-  function nextPrecipitationWindow(reading) {
-    const times = reading?.hourly?.time;
-    const amounts = reading?.hourly?.precipitation;
-    const currentTime = reading?.current?.time;
-    if (!Array.isArray(times) || !Array.isArray(amounts) || times.length !== amounts.length) return null;
-    const indices = times.map((time, index) => ({ time, index }))
-      .filter(item => typeof currentTime !== 'string' || item.time > currentTime)
-      .slice(0, 3)
-      .map(item => item.index);
-    if (indices.length !== 3) return null;
-    const values = indices.map(index => Number(amounts[index]));
-    return values.every(Number.isFinite) ? values.reduce((total, value) => total + value, 0) : null;
-  }
 
   function renderMunicipalities(cities, featured) {
     const preview = $('weather-municipality-preview');
     const towns = cities.filter(city => city.name !== featured?.name);
-    preview.setAttribute('aria-label', 'Precipitação prevista nas demais cidades da regional METRO');
+    preview.setAttribute('aria-label', 'Chuva atual estimada nas demais cidades da regional METRO');
     preview.replaceChildren(...towns.map(city => {
       const row = document.createElement('span');
       row.className = 'weather-mini-city';
       row.setAttribute('role', 'listitem');
-      row.setAttribute('aria-label', `${city.name}: ${number(city.precipitation, 1)} milímetros de precipitação previstos`);
+      row.setAttribute('aria-label', `${city.name}: ${number(city.precipitation, 1)} milímetros estimados nos últimos 15 minutos`);
       row.title = row.getAttribute('aria-label');
       const iconKind = city.precipitation > 0 ? (city.kind === 'storm' ? 'storm' : 'rain') : city.kind;
       row.innerHTML = `<span class="weather-mini-city-name">${city.name}</span>${svgNode(iconKind, 'weather-mini-icon')}<strong>${number(city.precipitation, 1)} mm</strong>`;
@@ -150,15 +108,16 @@
       const reading = readings[index];
       const current = reading?.current || {};
       const [, kind] = conditionFor(current.weather_code);
-      return { ...place, current, kind, precipitation: nextPrecipitationWindow(reading) };
+      const readingNow = weatherData.readCurrent(reading);
+      return { ...place, current, kind, precipitation: readingNow?.amount ?? null };
     });
     const available = cities.filter(city => Number.isFinite(city.precipitation));
-    if (!available.length) throw new Error('Previsão de precipitação indisponível para a regional.');
+    if (!available.length) throw new Error('Dados atuais de precipitação indisponíveis ou desatualizados.');
     const maximum = Math.max(...available.map(city => city.precipitation));
     const contenders = available.filter(city => Math.abs(city.precipitation - maximum) < 0.0001);
     const featured = maximum > 0
       ? (contenders.find(city => city.name === featuredCityName) || contenders[0])
-      : null;
+      : (available.find(city => city.name === anchorCity.name) || available[0]);
     const nextFeaturedName = featured?.name || null;
     if (featuredCityName !== null && featuredCityName !== nextFeaturedName) {
       window.clearTimeout(leaderAnimationTimer);
@@ -167,25 +126,26 @@
       leaderAnimationTimer = window.setTimeout(() => root.classList.remove('is-leader-changing'), 280);
     }
     featuredCityName = nextFeaturedName;
-    const kind = featured ? (featured.kind === 'storm' ? 'storm' : 'rain') : cities[0].kind;
+    const kind = maximum > 0 ? (featured.kind === 'storm' ? 'storm' : 'rain') : featured.kind;
     root.dataset.condition = kind;
     const icon = $('weather-icon');
-    const iconKind = featured ? kind : 'cloud';
+    const iconKind = kind;
     icon.dataset.kind = iconKind;
     icon.innerHTML = icons[iconKind] || icons.cloud;
-    $('weather-featured-city').textContent = featured?.name || 'Sem chuva prevista';
+    $('weather-featured-city').textContent = featured.name;
     $('weather-precipitation').textContent = number(maximum, 1);
     renderMunicipalities(cities, featured);
-    root.setAttribute('aria-label', featured
-      ? `Precipitação prevista em ${featured.name}: ${number(maximum, 1)} milímetros`
-      : 'Sem chuva prevista nas cidades da regional METRO');
+    const description = `Chuva atual estimada em ${featured.name}: ${number(maximum, 1)} milímetros nos últimos 15 minutos${stale ? '. Dados atrasados; sem conexão com a fonte' : ''}`;
+    root.setAttribute('aria-label', description);
+    root.title = description;
+    $('weather-data-status').textContent = stale ? 'Dados atrasados' : 'Estimativa · 15 min';
     root.dataset.weatherState = stale ? 'stale' : 'ready';
     root.setAttribute('aria-busy', 'false');
   }
 
   function showError(message) {
     root.dataset.weatherState = 'error';
-    $('weather-featured-city').textContent = 'Previsão indisponível';
+    $('weather-featured-city').textContent = 'Dados indisponíveis';
     $('weather-precipitation').textContent = '—';
     $('weather-icon').dataset.kind = 'cloud';
     $('weather-icon').innerHTML = icons.cloud;
@@ -195,37 +155,31 @@
       const row = document.createElement('span');
       row.className = 'weather-mini-city weather-mini-city-unavailable';
       row.setAttribute('role', 'listitem');
-      row.setAttribute('aria-label', `${name}: previsão de precipitação indisponível`);
+      row.setAttribute('aria-label', `${name}: precipitação atual indisponível`);
       row.innerHTML = `<span class="weather-mini-city-name">${name}</span>${svgNode('cloud', 'weather-mini-icon')}<strong title="${message || 'Sem conexão'}">— mm</strong>`;
       return row;
     }));
+    $('weather-data-status').textContent = 'Sem dados atuais';
+    root.setAttribute('aria-label','Dados atuais de chuva indisponíveis');
+    root.title = message || 'Sem dados atuais';
     root.setAttribute('aria-busy', 'false');
   }
 
-  function requestUrl(locations) {
-    const params = new URLSearchParams({
-      latitude: locations.map(place => place.latitude).join(','),
-      longitude: locations.map(place => place.longitude).join(','),
-      current: 'weather_code',
-      hourly: 'precipitation',
-      forecast_hours: '5',
-      timezone: 'America/Sao_Paulo'
-    });
-    return `https://api.open-meteo.com/v1/forecast?${params}`;
-  }
 
   async function load({ force = false } = {}) {
     if (inFlight) return inFlight;
     const cache = readCache();
     const age = cache ? Date.now() - cache.savedAt : Infinity;
-    if (!force && cache && age < cacheTtl) {
+    if (!force && cache && age >= 0 && age < cacheTtl) {
       try { render(cache.data, { locations: cache.locations }); resolvedLocations = cache.locations; lastLoadedAt = cache.savedAt; return; }
       catch { /* discard malformed or old cached schema and fetch fresh data */ }
     }
 
     root.setAttribute('aria-busy', 'true');
-    inFlight = resolveLocations()
-      .then(locations => fetch(requestUrl(locations), { method: 'GET', mode: 'cors', credentials: 'omit' }).then(response => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    inFlight = Promise.resolve(weatherData.locations)
+      .then(locations => fetch(weatherData.requestUrl(), { method: 'GET', mode: 'cors', credentials: 'omit', signal: controller.signal }).then(response => {
         if (!response.ok) throw new Error(`Serviço meteorológico indisponível (${response.status}).`);
         return response.json();
       }).then(data => ({ data, locations })))
@@ -236,13 +190,14 @@
         try { localStorage.setItem(storageKey, JSON.stringify({ savedAt, data, locations })); } catch { /* weather remains available for this session */ }
       })
       .catch(error => {
-        if (cache && Date.now() - cache.savedAt < staleLimit) {
+        if (cache && Date.now() - cache.savedAt >= 0 && Date.now() - cache.savedAt < staleLimit) {
           try { render(cache.data, { stale: true, locations: cache.locations }); resolvedLocations = cache.locations; lastLoadedAt = Date.now(); return; }
           catch { /* bad cache: show the service error below */ }
         }
         showError(error instanceof TypeError ? 'Verifique a conexão e tente novamente.' : error.message);
       })
       .finally(() => {
+        clearTimeout(timeout);
         root.setAttribute('aria-busy', 'false');
         inFlight = null;
       });
